@@ -124,6 +124,7 @@ export class TerminalComponent implements AfterViewInit {
     this.debouncedFit_ = debounce(() => {
       fitAddon.fit()
       this.cdr_.markForCheck();
+      this.onTerminalResize();
     }, 100)
     this.debouncedFit_();
     window.addEventListener('resize', () => this.debouncedFit_())
