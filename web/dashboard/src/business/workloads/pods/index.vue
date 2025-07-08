@@ -34,7 +34,7 @@
       </el-button>
     </div>
     <complex-table :selects.sync="selects" :data="data" v-loading="loading" :pagination-config="paginationConfig"
-                   :search-config="searchConfig" @search="search" @sort-change='sortTableFun' :showFullTextSwitch="true" @update:isFullTextSearch="OnIsFullTextSearchChange">
+                   :search-config="searchConfig" @search="search" :showFullTextSwitch="true" @update:isFullTextSearch="OnIsFullTextSearchChange">
       <el-table-column type="selection" fix ></el-table-column>
       <el-table-column :label="$t('commons.table.name')" prop="name" min-width="80" show-overflow-tooltip fix sortable="name">
         <template v-slot:default="{row}">
@@ -146,6 +146,49 @@
         </template>
       </el-table-column>
     </complex-table>
+
+    <el-dialog
+      :title="$t('commons.button.edit')"
+      :visible.sync="editDialogVisible"
+      width="80%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <pod-edit 
+        v-if="editDialogVisible"
+        :name="selectedPod.name"
+        :namespace="selectedPod.namespace"
+        @close="closeEditDialog"
+        @success="handleEditSuccess">
+      </pod-edit>
+    </el-dialog>
+
+    <el-dialog
+      :title="$t('business.pod.pod_file')"
+      :visible.sync="fileDialogVisible"
+      width="90%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <pod-file-browser
+        v-if="fileDialogVisible"
+        :name="selectedPod.name"
+        :namespace="selectedPod.namespace"
+        @close="closeFileDialog">
+      </pod-file-browser>
+    </el-dialog>
+
+    <el-dialog
+      title="Top Pod"
+      :visible.sync="topDialogVisible"
+      width="80%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <pod-top
+        v-if="topDialogVisible"
+        :key="topDialogKey"
+        @close="closeTopDialog"
+      >
+      </pod-top>
+    </el-dialog>
   </layout-content>
   </div>
 </template>
@@ -160,9 +203,18 @@ import writeXlsxFile from "write-excel-file";
 import { cpuUnitConvert, memoryUnitConvert } from "@/utils/unitConvert"
 import { listPodMetrics } from "@/api/apis"
 import { searchFullTextItems } from "@/api/fulltextsearch/fulltextsearch"
+import PodEdit from "./edit"
+import PodFileBrowser from "./podfilebrowser"
+import PodTop from "./top"
 export default {
   name: "Pods",
-  components: { LayoutContent, ComplexTable },
+  components: { 
+    LayoutContent, 
+    ComplexTable,
+    PodEdit,
+    PodFileBrowser,
+    PodTop 
+  },
   data () {
     return {
       loading: false,
@@ -180,16 +232,25 @@ export default {
       podUsage: [],
       orderField: null,
       orderMethod: null,
-      isFullTextSearch: false
+      isFullTextSearch: false,
+      editDialogVisible: false,
+      fileDialogVisible: false,
+      topDialogVisible: false,
+      topDialogKey: 0, // 新增唯一key
+      selectedPod: {
+        name: "",
+        namespace: ""
+      }
     }
   },
   methods: {
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PodDetail",
         params: { namespace: row.metadata.namespace, name: row.metadata.name },
-        query: { yamlShow: false }
+        query: { yamlShow: false, cluster: this.clusterName }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onCheckDeletePermissions () {
       return checkPermissions({ scope: "namespace", apiGroup: "", resource: "pods", verb: "delete" })
@@ -223,7 +284,32 @@ export default {
       }
     },
     onEdit (row) {
-      this.$router.push({ name: "PodEdit", params: { namespace: row.metadata.namespace, name: row.metadata.name } })
+      this.selectedPod = {
+        name: row.metadata.name,
+        namespace: row.metadata.namespace
+      }
+      this.editDialogVisible = true
+    },
+    closeEditDialog() {
+      this.editDialogVisible = false
+    },
+    handleEditSuccess() {
+      this.editDialogVisible = false
+      this.search(true)
+      this.$message({
+        type: "success",
+        message: this.$t("commons.msg.update_success")
+      })
+    },
+    onTop () {
+      this.topDialogVisible = false;
+      this.$nextTick(() => {
+        this.topDialogKey++;
+        this.topDialogVisible = true;
+      });
+    },
+    closeTopDialog() {
+      this.topDialogVisible = false
     },
     openTerminal (row, container) {
       let c
@@ -263,16 +349,22 @@ export default {
       })
       window.open(routeUrl.href, "_blank")
     },
-    openPodFiles(row,container) {
+    openPodFiles(row, container) {
       let c
       if (container) {
         c = container
       } else {
         c = row.containers[0]
       }
-      this.$router.push({ name: "PodFile", params: { namespace: row.metadata.namespace, name: row.metadata.name },query:{
-          container: c
-        }})
+      this.selectedPod = {
+        name: row.metadata.name,
+        namespace: row.metadata.namespace,
+        container: c
+      }
+      this.fileDialogVisible = true
+    },
+    closeFileDialog() {
+      this.fileDialogVisible = false
     },
     onDelete (row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {
@@ -337,10 +429,11 @@ export default {
       })
     },
     onCreate () {
-      this.$router.push({ name: "PodCreateYaml", query: { type: "pods" } })
+      const routeUrl = this.$router.resolve({ name: "PodCreateYaml", query: { type: "pods", cluster: this.clusterName } })
+      window.open(routeUrl.href, "_blank")
     },
     onTop () {
-      this.$router.push({ name: "PodTop" })
+      this.topDialogVisible = true
     },
     getPodStatus (row) {
       if (row.status.containerStatuses) {
@@ -595,7 +688,7 @@ export default {
               })
               window.open(routeUrl.href, "_blank")
       }
-    }
+    },
   },
   mounted () {
     this.clusterName = this.$route.query.cluster

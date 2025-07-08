@@ -1,23 +1,22 @@
 <template>
-  <layout-content :header="$t('commons.button.edit')" :back-to="{name: 'Pods'}" v-loading="loading">
+  <div v-loading="loading">
     <yaml-editor :value="item" :is-edit="true" ref="yaml_editor"></yaml-editor>
     <div class="bottom-button">
-      <el-button @click="onCancel()">{{ $t("commons.button.cancel") }}</el-button>
+      <el-button @click="$emit('close')">{{ $t("commons.button.cancel") }}</el-button>
       <el-button v-loading="loading" @click="onSubmit" type="primary">
         {{ $t("commons.button.submit") }}
       </el-button>
     </div>
-  </layout-content>
+  </div>
 </template>
 
 <script>
-import LayoutContent from "@/components/layout/LayoutContent"
 import YamlEditor from "@/components/yaml-editor"
 import {getPodByName, updatePod} from "@/api/pods"
 
 export default {
   name: "PodEdit",
-  components: { YamlEditor, LayoutContent },
+  components: { YamlEditor },
   props: {
     name: String,
     namespace: String
@@ -26,13 +25,13 @@ export default {
     return {
       loading: false,
       item: {},
-      cluster: ""
     }
   },
   methods: {
     getDetail () {
       this.loading = true
-      getPodByName(this.cluster, this.namespace, this.name).then(res => {
+      const cluster = this.$route.query.cluster
+      getPodByName(cluster, this.namespace, this.name).then(res => {
         this.item = res
       }).finally(() => {
         this.loading = false
@@ -41,22 +40,15 @@ export default {
     onSubmit () {
       this.loading = true
       const data = this.$refs.yaml_editor.getValue()
-      updatePod(this.cluster, this.namespace, this.name, data).then(() => {
-        this.$message({
-          type: "success",
-          message: this.$t("commons.msg.update_success"),
-        })
-        this.$router.push({ name: "Pods" })
+      const cluster = this.$route.query.cluster
+      updatePod(cluster, this.namespace, this.name, data).then(() => {
+        this.$emit('success')
       }).finally(() => {
         this.loading = false
       })
-    },
-    onCancel () {
-      this.$router.push({ name: "Pods" })
     }
   },
   created () {
-    this.cluster = this.$route.query.cluster
     this.getDetail()
   }
 }

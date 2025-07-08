@@ -1,5 +1,5 @@
 <template>
-  <layout-content :header="name" :back-to="{name: 'Pods'}">
+  <div>
     <el-dropdown @command="openPage">
       <el-button size="mini" icon="el-icon-plus" type="primary">{{ $t("commons.button.create") }}<i
               class="el-icon-arrow-down el-icon--right"></i></el-button>
@@ -74,11 +74,15 @@
         </template>
       </el-table-column>
     </complex-table>
+    <div class="dialog-footer" style="margin-top: 20px; text-align: right;">
+      <el-button @click="$emit('close')">{{ $t("commons.button.close") }}</el-button>
+    </div>
     <el-dialog
-            :title="$t('business.pod.create_folder')"
-            :visible.sync="openAddFolder"
-            :close-on-click-modal="false"
-            width="30%">
+      :title="$t('business.pod.create_folder')"
+      :visible.sync="openAddFolder"
+      :close-on-click-modal="false"
+      width="30%"
+      append-to-body>
       <el-form label-position="top" :model="folderForm" ref="folderForm" :rules="rules">
         <el-form-item :label="$t('commons.table.name')" prop="name">
           <el-input clearable v-model="folderForm.name" :placeholder="$t('business.pod.name_helper')"></el-input>
@@ -90,26 +94,12 @@
       </span>
     </el-dialog>
     <el-dialog
-            :title="$t('business.pod.rename')+ '   ' +this.renameForm.oldName"
-            :visible.sync="openRenamePage"
-            :close-on-click-modal="false"
-            width="30%">
-      <el-form label-position="top" :model="renameForm" ref="renameForm" :rules="rules">
-        <el-form-item :label="$t('commons.table.name')" prop="name">
-          <el-input clearable v-model="renameForm.name"></el-input>
-        </el-form-item>
-      </el-form>
-      <span slot="footer" class="dialog-footer">
-      <el-button @click="openRenamePage = false">{{ $t("commons.button.cancel") }}</el-button>
-      <el-button type="primary" @click="rename()">{{ $t("commons.button.confirm") }}</el-button>
-      </span>
-    </el-dialog>
-    <el-dialog
-            :title="editFile?$t('business.pod.edit_file'):$t('business.pod.create_file')"
-            :visible.sync="openAddFile"
-            :before-close="handleFileClose"
-            :close-on-click-modal="false"
-            width="60%">
+      :title="editFile?$t('business.pod.edit_file'):$t('business.pod.create_file')"
+      :visible.sync="openAddFile"
+      :before-close="handleFileClose"
+      :close-on-click-modal="false"
+      width="60%"
+      append-to-body>
       <el-form label-position="top" :model="fileForm" ref="fileForm" :rules="rules">
         <el-form-item :label="$t('commons.table.name')" prop="name">
           <el-input clearable v-model="fileForm.name" :disabled="editFile"
@@ -125,11 +115,28 @@
       </span>
     </el-dialog>
     <el-dialog
-            :title="$t('business.pod.upload')"
-            :visible.sync="openUpload"
-            :close-on-click-modal="false"
-            :before-close="handleUploadClose"
-            width="30%">
+      :title="$t('business.pod.rename')+ '   ' +this.renameForm.oldName"
+      :visible.sync="openRenamePage"
+      :close-on-click-modal="false"
+      width="30%"
+      append-to-body>
+      <el-form label-position="top" :model="renameForm" ref="renameForm" :rules="rules">
+        <el-form-item :label="$t('commons.table.name')" prop="name">
+          <el-input clearable v-model="renameForm.name"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+      <el-button @click="openRenamePage = false">{{ $t("commons.button.cancel") }}</el-button>
+      <el-button type="primary" @click="rename()">{{ $t("commons.button.confirm") }}</el-button>
+      </span>
+    </el-dialog>
+    <el-dialog
+      :title="$t('business.pod.upload')"
+      :visible.sync="openUpload"
+      :close-on-click-modal="false"
+      :before-close="handleUploadClose"
+      width="30%"
+      append-to-body>
       <el-upload :on-change="onUploadChange" ref="upload" action="" :auto-upload="false" class="upload-demo"
                  :multiple="true">
         <el-button>{{ $t("business.pod.choose_file") }}</el-button>
@@ -140,7 +147,7 @@
         <el-button type="primary" @click="upload" :loading="uploadLoading">{{ $t("commons.button.confirm") }}</el-button>
       </span>
     </el-dialog>
-  </layout-content>
+  </div>
 </template>
 
 <script>
@@ -159,7 +166,7 @@ import Rule from "@/utils/rules"
 
 export default {
   name: "PodFileBrowser",
-  components: { ComplexTable, LayoutContent },
+  components: { ComplexTable },
   props: {
     name: String,
     namespace: String
