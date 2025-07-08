@@ -189,6 +189,31 @@
       >
       </pod-top>
     </el-dialog>
+
+    <el-dialog
+      title="终端"
+      :visible.sync="terminalDialogVisible"
+      width="80%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <Terminal
+        v-if="terminalDialogVisible"
+        :params="terminalDialogParams"
+        @close="terminalDialogVisible = false"
+      />
+    </el-dialog>
+    <el-dialog
+      title="日志"
+      :visible.sync="logDialogVisible"
+      width="80%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <Terminal
+        v-if="logDialogVisible"
+        :params="logDialogParams"
+        @close="logDialogVisible = false"
+      />
+    </el-dialog>
   </layout-content>
   </div>
 </template>
@@ -206,6 +231,7 @@ import { searchFullTextItems } from "@/api/fulltextsearch/fulltextsearch"
 import PodEdit from "./edit"
 import PodFileBrowser from "./podfilebrowser"
 import PodTop from "./top"
+import Terminal from "@/business/workloads/terminal";
 export default {
   name: "Pods",
   components: { 
@@ -213,7 +239,8 @@ export default {
     ComplexTable,
     PodEdit,
     PodFileBrowser,
-    PodTop 
+    PodTop,
+    Terminal
   },
   data () {
     return {
@@ -240,7 +267,11 @@ export default {
       selectedPod: {
         name: "",
         namespace: ""
-      }
+      },
+      terminalDialogVisible: false,
+      logDialogVisible: false,
+      terminalDialogParams: {},
+      logDialogParams: {},
     }
   },
   methods: {
@@ -312,42 +343,26 @@ export default {
       this.topDialogVisible = false
     },
     openTerminal (row, container) {
-      let c
-      if (container) {
-        c = container
-      } else {
-        c = row.containers[0]
-      }
-      let routeUrl = this.$router.resolve({
-        path: "/terminal",
-        query: {
-          cluster: this.clusterName,
-          namespace: row.metadata.namespace,
-          pod: row.metadata.name,
-          container: c,
-          type: "terminal"
-        }
-      })
-      window.open(routeUrl.href, "_blank")
+      let c = container || row.containers[0];
+      this.terminalDialogParams = {
+        cluster: this.clusterName,
+        namespace: row.metadata.namespace,
+        pod: row.metadata.name,
+        container: c,
+        type: "terminal"
+      };
+      this.terminalDialogVisible = true;
     },
     openTerminalLogs (row, container) {
-      let c
-      if (container) {
-        c = container
-      } else {
-        c = row.containers[0]
-      }
-      let routeUrl = this.$router.resolve({
-        path: "/terminal",
-        query: {
-          cluster: this.clusterName,
-          namespace: row.metadata.namespace,
-          pod: row.metadata.name,
-          container: c,
-          type: "log"
-        }
-      })
-      window.open(routeUrl.href, "_blank")
+      let c = container || row.containers[0];
+      this.logDialogParams = {
+        cluster: this.clusterName,
+        namespace: row.metadata.namespace,
+        pod: row.metadata.name,
+        container: c,
+        type: "log"
+      };
+      this.logDialogVisible = true;
     },
     openPodFiles(row, container) {
       let c

@@ -47,7 +47,7 @@
       </div>
     </el-row>
 
-    <el-dialog :title="$t('business.pod.download_logs') + ': ' + terminal.namespace + '/' + terminal.pod + '/' + terminal.container" width="70%" :close-on-click-modal="false" :visible.sync="dialogDownloadVisible">
+    <el-dialog :title="$t('business.pod.download_logs') + ': ' + terminal.namespace + '/' + terminal.pod + '/' + terminal.container" width="70%" :close-on-click-modal="false" :visible.sync="dialogDownloadVisible" :append-to-body="true">
       <el-form label-position="top" style="margin-left: 40px">
         <el-row :gutter="20">
           <el-col :span="8">
