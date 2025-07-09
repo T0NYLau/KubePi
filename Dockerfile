@@ -34,7 +34,7 @@ WORKDIR /build/kubepi/bin
 COPY --from=stage-web-build /build/kubepi/web .
 
 RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked go mod download
-
+RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked go get go.uber.org/automaxprocs@latest
 RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked make build_gotty
 RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked make build_bin
 
@@ -60,7 +60,7 @@ RUN ARCH=$(uname -m) \
     && tar zxvf fzf.tar.gz \
     && rm -rf fzf.tar.gz \
     && chmod -R 755 fzf \
-    && sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
+    # && sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
     && yes | fzf/install \
     && ln -s fzf/bin/fzf /usr/local/bin/fzf \
     && cd /tmp/ \

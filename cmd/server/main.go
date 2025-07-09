@@ -16,6 +16,7 @@ import (
 	"github.com/KubeOperator/kubepi/pkg/network/ip"
 	"github.com/spf13/cobra"
 	_ "k8s.io/api/rbac/v1"
+	_ "go.uber.org/automaxprocs" 
 )
 
 //go:generate swag init
