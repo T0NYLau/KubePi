@@ -364,25 +364,28 @@ export default {
             this.myChart.on('click', function (params) {
                 if (params.dataType == 'node') {
                     if (params.data.nodeType == 'Pod') {
-                        me.$router.push({
+                        const routeUrl = me.$router.resolve({
                             name: "PodDetail",
                             params: { name: params.data.nodeName, namespace: params.data.nodeNamespace },
-                            query: { yamlShow: false },
+                            query: { yamlShow: false, cluster: me.cluster },
                         })
+                        window.open(routeUrl.href, "_blank")
                     }
                     if (params.data.nodeType == 'Service') {
-                        me.$router.push({
+                        const routeUrl = me.$router.resolve({
                             name: "ServiceDetail",
                             params: { name: params.data.nodeName, namespace: params.data.nodeNamespace },
-                            query: { yamlShow: false },
+                            query: { yamlShow: false, cluster: me.cluster },
                         })
+                        window.open(routeUrl.href, "_blank")
                     }
                     if (params.data.nodeType == 'Ingress') {
-                        me.$router.push({
+                        const routeUrl = me.$router.resolve({
                             name: "IngressDetail",
                             params: { name: params.data.nodeName, namespace: params.data.nodeNamespace },
-                            query: { yamlShow: false },
+                            query: { yamlShow: false, cluster: me.cluster },
                         })
+                        window.open(routeUrl.href, "_blank")
                     }
                 }
             });

@@ -196,11 +196,12 @@ export default {
       this.form.spec.resources.requests.storage = this.currentStorageCapacity.toString() + 'Gi'
     },
     openPodDetail (pod) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PodDetail",
         params: { namespace: pod.metadata.namespace, name: pod.metadata.name },
-        query: { yamlShow: false }
+        query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     checkExecPermissions () {
       return checkPermissions({ scope: 'namespace', apiGroup: '', resource: 'pods/exec', verb: 'create' })

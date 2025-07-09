@@ -156,10 +156,12 @@ export default {
       })
     },
     openDetail(row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PDBDetail",
-        params: {namespace: row.metadata.namespace, name: row.metadata.name}
+        params: {namespace: row.metadata.namespace, name: row.metadata.name},
+        query: { cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     }
   },
   created() {

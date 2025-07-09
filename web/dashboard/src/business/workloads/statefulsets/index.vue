@@ -195,7 +195,12 @@ export default {
       this.$router.push({ name: "StatefulSetCreate", params: { operation: "create" }, query: { yamlShow: false } })
     },
     openDetail(row) {
-      this.$router.push({ name: "StatefulSetDetail", params: { namespace: row.metadata.namespace, name: row.metadata.name }, query: { yamlShow: false } })
+      const routeUrl = this.$router.resolve({ 
+        name: "StatefulSetDetail", 
+        params: { namespace: row.metadata.namespace, name: row.metadata.name }, 
+        query: { yamlShow: false, cluster: this.clusterName } 
+      })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate() {
       this.$router.push({ name: "StatefulSetCreateYaml", params: { operation: "create" }, query: { type: "statefulsets" } })

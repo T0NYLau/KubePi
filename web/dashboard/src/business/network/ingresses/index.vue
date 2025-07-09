@@ -263,11 +263,12 @@ export default {
       return this.newVersion ? nestedPath : flatPath
     },
     openDetail(row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "IngressDetail",
         params: { name: row.metadata.name, namespace: row.metadata.namespace },
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     //改变选项"是否全文搜索"
     OnIsFullTextSearchChange(val){

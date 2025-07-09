@@ -216,10 +216,12 @@ export default {
       })
     },
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "ClusterRoleBindingDetail",
-        params: { name: row.metadata.name }
+        params: { name: row.metadata.name },
+        query: { cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     //改变选项"是否全文搜索"
     OnIsFullTextSearchChange(val){

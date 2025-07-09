@@ -211,18 +211,20 @@ export default {
       })
     },
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PersistentVolumeDetail",
         params: { name: row.metadata.name },
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     openChaimDetail(row){
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PersistentVolumeClaimDetail",
         params: { name: row.spec.claimRef.name ,namespace: row.spec.claimRef.namespace },
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     //改变选项"是否全文搜索"
     OnIsFullTextSearchChange(val){

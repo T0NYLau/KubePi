@@ -221,11 +221,12 @@ export default {
       })
     },
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "HPADetail",
         params: { namespace: row.metadata.namespace, name: row.metadata.name },
-        query: { yamlShow: false }
+        query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     }
   },
   created () {

@@ -1,55 +1,63 @@
 export const mixin = {
   methods: {
     toResource (type, namespace, name) {
+      let routeUrl;
       switch (type) {
         case "Pod":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "PodDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "Service":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "ServiceDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "Job":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "JobDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "HorizontalPodAutoscaler":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "HPADetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "PersistentVolumeClaim":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "PersistentVolumeClaimDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "Endpoints":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "EndpointDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         case "PodDisruptionBudget":
-          this.$router.push({
+          routeUrl = this.$router.resolve({
             name: "PDBDetail",
             params: { namespace: namespace, name: name },
-            query: { yamlShow: false }
+            query: { yamlShow: false, cluster: this.cluster }
           })
+          window.open(routeUrl.href, "_blank")
           break
         default:
           break

@@ -185,11 +185,12 @@ export default {
       return Base64.decode(value)
     },
     openChaimDetail(name,namespace){
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PersistentVolumeClaimDetail",
         params: { name: name ,namespace: namespace },
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     }
   },
   watch: {

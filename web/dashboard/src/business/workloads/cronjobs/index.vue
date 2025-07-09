@@ -128,11 +128,12 @@ export default {
       this.$router.push({ name: "CronJobCreate", params: { operation: "create" }, query: { yamlShow: false } })
     },
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "CronJobDetail",
         params: { namespace: row.metadata.namespace, name: row.metadata.name },
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.clusterName },
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
       this.$router.push({ name: "CronJobCreateYaml", params: { operation: "create" }, query: { type: "cronjobs" } })

@@ -161,7 +161,12 @@ export default {
       this.$router.push({ name: "DaemonSetCreate", params: { operation: "create" }, query: { yamlShow: false } })
     },
     openDetail(row) {
-      this.$router.push({ name: "DaemonSetDetail", params: { namespace: row.metadata.namespace, name: row.metadata.name }, query: { yamlShow: false } })
+      const routeUrl = this.$router.resolve({ 
+        name: "DaemonSetDetail", 
+        params: { namespace: row.metadata.namespace, name: row.metadata.name }, 
+        query: { yamlShow: false, cluster: this.clusterName } 
+      })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate() {
       this.$router.push({ name: "DaemonSetCreateYaml", params: { operation: "create" }, query: { type: "daemonsets" } })
