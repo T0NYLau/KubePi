@@ -65,11 +65,12 @@ export default {
   },
   watch: {
     yamlShow: function (newValue) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "EventDetail",
-        params: { name: this.name,namespace: this.namespace, cluster: this.cluster},
+        params: { name: this.name, namespace: this.namespace, cluster: this.cluster},
         query: { yamlShow: newValue },
       })
+      window.open(routeUrl.href, "_blank")
       this.getDetail()
     },
   },

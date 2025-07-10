@@ -66,6 +66,7 @@ export default {
       data: [],
       loading: false,
       clusterName: "",
+      cluster: "", // 新增cluster变量，与mixin中使用的名称保持一致
       namespaces: [],
       paginationConfig: {
         currentPage: 1,
@@ -103,11 +104,12 @@ export default {
       }
     },
     openDetail (row) {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "EventDetail",
-        params: { name: row.metadata.name,namespace: row.metadata.namespace, cluster: this.clusterName },
+        params: { name: row.metadata.name, namespace: row.metadata.namespace, cluster: this.clusterName },
         query: { yamlShow: false },
       })
+      window.open(routeUrl.href, "_blank")
     },
     //改变选项"是否全文搜索"
     OnIsFullTextSearchChange(val){
@@ -116,6 +118,7 @@ export default {
   },
   created () {
     this.clusterName = this.$route.query.cluster
+    this.cluster = this.clusterName // 将clusterName的值赋给cluster
     this.search()
   }
 }
