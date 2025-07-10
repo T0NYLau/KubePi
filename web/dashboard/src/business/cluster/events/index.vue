@@ -104,12 +104,15 @@ export default {
       }
     },
     openDetail (row) {
-      const routeUrl = this.$router.resolve({
-        name: "EventDetail",
-        params: { name: row.metadata.name, namespace: row.metadata.namespace, cluster: this.clusterName },
-        query: { yamlShow: false },
-      })
-      window.open(routeUrl.href, "_blank")
+      // 使用window.location.origin获取完整的基础URL
+      const baseUrl = window.location.origin
+      // 获取当前的公共路径前缀
+      const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/'
+      
+      // 直接构建URL而不是使用router.resolve，确保参数正确传递
+      const url = `${baseUrl}${publicPath}events/detail/${this.clusterName}/${row.metadata.namespace}/${row.metadata.name}?yamlShow=false&cluster=${this.clusterName}`
+      
+      window.open(url, "_blank")
     },
     //改变选项"是否全文搜索"
     OnIsFullTextSearchChange(val){

@@ -65,12 +65,15 @@ export default {
   },
   watch: {
     yamlShow: function (newValue) {
-      const routeUrl = this.$router.resolve({
-        name: "EventDetail",
-        params: { name: this.name, namespace: this.namespace, cluster: this.cluster},
-        query: { yamlShow: newValue },
-      })
-      window.open(routeUrl.href, "_blank")
+      // 使用window.location.origin获取完整的基础URL
+      const baseUrl = window.location.origin
+      // 获取当前的公共路径前缀
+      const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/'
+      
+      // 直接构建URL而不是使用router.resolve，确保参数正确传递
+      const url = `${baseUrl}${publicPath}events/detail/${this.cluster}/${this.namespace}/${this.name}?yamlShow=${newValue}&cluster=${this.cluster}`
+      
+      window.open(url, "_blank")
       this.getDetail()
     },
   },

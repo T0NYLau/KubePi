@@ -60,7 +60,7 @@ RUN ARCH=$(uname -m) \
     && tar zxvf fzf.tar.gz \
     && rm -rf fzf.tar.gz \
     && chmod -R 755 fzf \
-    && sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
+    #&& sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
     && yes | fzf/install \
     && ln -s fzf/bin/fzf /usr/local/bin/fzf \
     && cd /tmp/ \
