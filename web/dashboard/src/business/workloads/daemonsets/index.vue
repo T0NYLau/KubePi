@@ -70,11 +70,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "DaemonSetEdit",
               params: { operation: "edit", namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false },
+              query: { yamlShow: false, cluster: this.clusterName },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "apps", resource: "daemonsets", verb: "update" })
@@ -104,11 +105,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "DaemonSetEdit",
               params: { operation: "edit", namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: true },
+              query: { yamlShow: true, cluster: this.clusterName },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "apps", resource: "daemonsets", verb: "update" })
@@ -158,7 +160,8 @@ export default {
   },
   methods: {
     onCreate() {
-      this.$router.push({ name: "DaemonSetCreate", params: { operation: "create" }, query: { yamlShow: false } })
+      const routeUrl = this.$router.resolve({ name: "DaemonSetCreate", params: { operation: "create" }, query: { yamlShow: false, cluster: this.clusterName } })
+      window.open(routeUrl.href, "_blank")
     },
     openDetail(row) {
       const routeUrl = this.$router.resolve({ 
@@ -169,7 +172,8 @@ export default {
       window.open(routeUrl.href, "_blank")
     },
     yamlCreate() {
-      this.$router.push({ name: "DaemonSetCreateYaml", params: { operation: "create" }, query: { type: "daemonsets" } })
+      const routeUrl = this.$router.resolve({ name: "DaemonSetCreateYaml", params: { operation: "create" }, query: { type: "daemonsets", cluster: this.clusterName } })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete(row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {

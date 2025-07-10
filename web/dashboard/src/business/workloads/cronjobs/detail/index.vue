@@ -108,6 +108,11 @@ export default {
       eventSelectors: "",
     }
   },
+  computed: {
+    cluster() {
+      return this.clusterName;
+    }
+  },
   watch: {
     yamlShow: function (newValue) {
       this.$router.push({
