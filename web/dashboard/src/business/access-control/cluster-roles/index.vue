@@ -56,11 +56,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ClusterRoleEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: false }
+              query: { yamlShow: false, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -75,11 +76,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ClusterRoleEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -148,12 +150,16 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "ClusterRoleCreate", query: { yamlShow: false }
+      const routeUrl = this.$router.resolve({
+        name: "ClusterRoleCreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({ name: "ClusterRoleCreateYaml", query: { type: "clusterroles" } })
+      const routeUrl = this.$router.resolve({ 
+        name: "ClusterRoleCreateYaml", query: { type: "clusterroles", cluster: this.cluster } 
+      })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

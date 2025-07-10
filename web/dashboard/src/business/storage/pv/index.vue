@@ -93,11 +93,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "PersistentVolumeEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: false },
+              query: { yamlShow: false, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "cluster", apiGroup: "", resource: "persistentvolumes", verb: "update" })
@@ -107,11 +108,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "PersistentVolumeEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: true },
+              query: { yamlShow: true, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "cluster", apiGroup: "", resource: "persistentvolumes", verb: "update" })
@@ -168,16 +170,18 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PersistentVolumeCreate",
-        query: { yamlShow: false },
+        query: { yamlShow: false, cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PersistentVolumeCreateYaml",
-        query: { type: "persistentvolumes" },
+        query: { type: "persistentvolumes", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {

@@ -58,11 +58,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "MutatingwebhookconfigurationEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: true },
+              query: { yamlShow: true, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -129,10 +130,11 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "MutatingWebhookConfigurationCreateYaml",
-        query: { type: "mutatingwebhookconfigurations" },
+        query: { type: "mutatingwebhookconfigurations", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {

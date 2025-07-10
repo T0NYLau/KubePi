@@ -137,12 +137,16 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "NetworkPolicyCreateYaml",
-        query: {
-          type: "networkpolicies"
-        }
+      const routeUrl = this.$router.resolve({
+        name: "NetworkPolicyCreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
+    },
+    yamlCreate () {
+      const routeUrl = this.$router.resolve({
+        name: "NetworkPolicyCreateYaml", query: { type: "networkpolicies", cluster: this.cluster }
+      })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

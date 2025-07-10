@@ -52,10 +52,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "PSPEdit",
-              params: {namespace: row.metadata.namespace, name: row.metadata.name}
+              params: {namespace: row.metadata.namespace, name: row.metadata.name},
+              query: { cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -124,12 +126,14 @@ export default {
       }
     },
     onCreate() {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "PSPCreateYaml",
         query: {
-          type: "podsecuritypolicies"
+          type: "podsecuritypolicies",
+          cluster: this.cluster
         }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete(row) {
       this.$confirm(

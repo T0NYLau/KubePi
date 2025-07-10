@@ -62,39 +62,31 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "RoleEdit",
-              params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false }
+              params: { name: row.metadata.name, namespace: row.metadata.namespace },
+              query: { yamlShow: false, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
-            return !checkPermissions({
-              scope: "namespace",
-              apiGroup: "rbac.authorization.k8s.io",
-              resource: "roles",
-              verb: "update"
-            })
-          }
+            return !checkPermissions({ scope: "namespace", apiGroup: "rbac.authorization.k8s.io", resource: "roles", verb: "update" })
+          },
         },
         {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "RoleEdit",
-              params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: true }
+              params: { name: row.metadata.name, namespace: row.metadata.namespace },
+              query: { yamlShow: true, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
-            return !checkPermissions({
-              scope: "namespace",
-              apiGroup: "rbac.authorization.k8s.io",
-              resource: "roles",
-              verb: "update"
-            })
-          }
+            return !checkPermissions({ scope: "namespace", apiGroup: "rbac.authorization.k8s.io", resource: "roles", verb: "update" })
+          },
         },
         {
           label: this.$t("commons.button.download_yaml"),
@@ -154,12 +146,16 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "RoleCreate", query: { yamlShow: false }
+      const routeUrl = this.$router.resolve({
+        name: "RoleCreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({ name: "RoleCreateYaml", query: { type: "roles" } })
+      const routeUrl = this.$router.resolve({
+        name: "RoleCreateYaml", query: { type: "roles", cluster: this.cluster }
+      })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

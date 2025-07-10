@@ -58,10 +58,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ServiceAccountEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
+              query: { cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "serviceaccounts", verb: "update" })
@@ -127,12 +129,10 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "ServiceAccountCreateYaml",
-        query: {
-          type: "serviceaccounts"
-        }
+      const routeUrl = this.$router.resolve({
+        name: "ServiceAccountCreate", query: { cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

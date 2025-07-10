@@ -73,11 +73,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "EndpointEdit",
               params: { name: row.metadata.name, namespace: row.metadata.namespace },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "endpoints", verb: "update" })
@@ -136,14 +137,16 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "EndpointCreate", query: { yamlShow: false }
+      const routeUrl = this.$router.resolve({
+        name: "EndpointCreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({
-        name: "EndpointCreateYaml", query: { type: "endpoints" }
+      const routeUrl = this.$router.resolve({
+        name: "EndpointCreateYaml", query: { type: "endpoints", cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

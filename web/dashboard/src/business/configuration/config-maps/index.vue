@@ -66,11 +66,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ConfigMapEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false }
+              query: { yamlShow: false, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "configmaps", verb: "update" })
@@ -80,11 +81,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ConfigMapEdit",
               params: { name: row.metadata.name, namespace: row.metadata.namespace },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "configmaps", verb: "update" })
@@ -143,14 +145,16 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
-        name: "ConfigMapCreate", query: { yamlShow: false }
+      const routeUrl = this.$router.resolve({
+        name: "ConfigMapCreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({
-        name: "ConfigMapCreateYaml", query: { type: "configmaps" }
+      const routeUrl = this.$router.resolve({
+        name: "ConfigMapCreateYaml", query: { type: "configmaps", cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

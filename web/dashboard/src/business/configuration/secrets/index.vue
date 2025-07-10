@@ -63,11 +63,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "SecretEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false }
+              query: { yamlShow: false, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: (row) => {
             return !checkPermissions({
@@ -82,11 +83,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "SecretEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -138,10 +140,16 @@ export default {
       })
     },
     onCreate () {
-      this.$router.push({ name: "SecretCreate", query: { yamlShow: false } })
+      const routeUrl = this.$router.resolve({
+        name: "SecretCreate", query: { yamlShow: false, cluster: this.cluster }
+      })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({ name: "SecretCreateYaml", query: { type: "secrets" } })
+      const routeUrl = this.$router.resolve({
+        name: "SecretCreateYaml", query: { type: "secrets", cluster: this.cluster }
+      })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

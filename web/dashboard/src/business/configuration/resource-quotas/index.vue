@@ -101,11 +101,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ResourceQuotaEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false }
+              query: { yamlShow: false, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "resourcequotas", verb: "update" })
@@ -115,11 +116,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "ResourceQuotaEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({ scope: "namespace", apiGroup: "", resource: "resourcequotas", verb: "update" })
@@ -166,13 +168,17 @@ export default {
       })
     },
     onCreate () {
-      this.$router.push({ name: "ResourceQuotaCreate", query: { yamlShow: false } })
+      const routeUrl = this.$router.resolve({ 
+        name: "ResourceQuotaCreate", query: { yamlShow: false, cluster: this.cluster } 
+      })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "ResourceQuotaCreateYaml",
-        query: { type: "resourcequotas" },
+        query: { type: "resourcequotas", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

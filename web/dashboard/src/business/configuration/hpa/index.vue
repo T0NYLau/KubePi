@@ -98,11 +98,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "HPAEdit",
               params: { namespace: row.metadata.namespace, name: row.metadata.name },
-              query: { yamlShow: false }
+              query: { yamlShow: false, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -117,11 +118,12 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "HPAEdit",
               params: { name: row.metadata.name, namespace: row.metadata.namespace },
-              query: { yamlShow: true }
+              query: { yamlShow: true, cluster: this.cluster }
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -178,14 +180,16 @@ export default {
       })
     },
     onCreate () {
-      this.$router.push({
-        name: "HPACreate", query: { yamlShow: false }
+      const routeUrl = this.$router.resolve({
+        name: "HPACreate", query: { yamlShow: false, cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate () {
-      this.$router.push({
-        name: "HPACreateYaml", query: { type: "horizontalpodautoscalers" }
+      const routeUrl = this.$router.resolve({
+        name: "HPACreateYaml", query: { type: "horizontalpodautoscalers", cluster: this.cluster }
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(

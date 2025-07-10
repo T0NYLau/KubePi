@@ -71,11 +71,12 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               name: "StorageClassEdit",
               params: { name: row.metadata.name },
-              query: { yamlShow: false },
+              query: { yamlShow: false, cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -157,10 +158,11 @@ export default {
       }
     },
     onCreate () {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         name: "StorageClassCreateYaml",
-        query: { type: "storageclasses" },
+        query: { type: "storageclasses", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete (row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {

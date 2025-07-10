@@ -95,10 +95,11 @@ export default {
           label: this.$t("commons.button.edit"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               path: `/ingresses/${row.metadata.namespace}/${row.metadata.name}/edit`,
-              query: { yamlShow: false, mode: "edit" },
+              query: { yamlShow: false, mode: "edit", cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -113,10 +114,11 @@ export default {
           label: this.$t("commons.button.edit_yaml"),
           icon: "el-icon-edit",
           click: (row) => {
-            this.$router.push({
+            const routeUrl = this.$router.resolve({
               path: `/ingresses/${row.metadata.namespace}/${row.metadata.name}/edit`,
-              query: { yamlShow: true, mode: "edit" },
+              query: { yamlShow: true, mode: "edit", cluster: this.cluster },
             })
+            window.open(routeUrl.href, "_blank")
           },
           disabled: () => {
             return !checkPermissions({
@@ -195,16 +197,18 @@ export default {
       this.showMoreDialog = true
     },
     onCreate() {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         path: `/ingresses/create`,
-        query: { yamlShow: false, mode: "create" },
+        query: { yamlShow: false, mode: "create", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     yamlCreate() {
-      this.$router.push({
+      const routeUrl = this.$router.resolve({
         path: `/ingresses/create/yaml`,
-        query: { type: "ingresses" },
+        query: { type: "ingresses", cluster: this.cluster },
       })
+      window.open(routeUrl.href, "_blank")
     },
     onDelete(row) {
       this.$confirm(this.$t("commons.confirm_message.delete"), this.$t("commons.message_box.prompt"), {
