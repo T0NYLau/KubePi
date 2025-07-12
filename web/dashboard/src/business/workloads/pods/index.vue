@@ -34,7 +34,7 @@
       </el-button>
     </div>
     <complex-table :selects.sync="selects" :data="data" v-loading="loading" :pagination-config="paginationConfig"
-                   :search-config="searchConfig" @search="search" :showFullTextSwitch="true" @update:isFullTextSearch="OnIsFullTextSearchChange">
+                   :search-config="searchConfig" @search="search" :showFullTextSwitch="true" @update:isFullTextSearch="OnIsFullTextSearchChange" @sort-change="sortTableFun">
       <el-table-column type="selection" fix ></el-table-column>
       <el-table-column :label="$t('commons.table.name')" prop="name" min-width="80" show-overflow-tooltip fix sortable="name">
         <template v-slot:default="{row}">

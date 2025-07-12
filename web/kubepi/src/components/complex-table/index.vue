@@ -32,7 +32,7 @@
 
     <div class="complex-table__body">
       <fu-table :empty-text="$t('commons.table.empty_text')" v-on="$listeners" v-bind="$attrs" :columns="columns" :local-key="localKey"
-                @selection-change="handleSelectionChange">
+                @selection-change="handleSelectionChange" @sort-change="handleSortChange">
         <slot></slot>
       </fu-table>
     </div>
@@ -78,6 +78,9 @@ export default {
     handleSelectionChange(val) {
       // this.selects = val
       this.$emit("update:selects", val)
+    },
+    handleSortChange(val) {
+      this.$emit("sort-change", val)
     }
   },
 }
