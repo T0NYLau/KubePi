@@ -52,29 +52,63 @@ func (s *service) SearchOperationLogs(num, size int, conditions common.Condition
 	db := s.GetDB(options)
 
 	var ms []q.Matcher
-	for k := range conditions {
-		if conditions[k].Field == "quick" {
-			ms = append(ms, q.Or(
-				costomStorm.Like("Operator", conditions[k].Value),
-				costomStorm.Like("Operation", conditions[k].Value),
-				costomStorm.Like("Detail", conditions[k].Value),
-			))
-		} else {
-			field := lang.FirstToUpper(conditions[k].Field)
-			value := conditions[k].Value
+	
+	// Check the type of conditions and handle accordingly
+	switch cond := conditions.(type) {
+	case common.ConditionsMap:
+		// Handle map-based conditions (old format)
+		for k := range cond {
+			if cond[k].Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("Operator", cond[k].Value),
+					costomStorm.Like("Operation", cond[k].Value),
+					costomStorm.Like("Detail", cond[k].Value),
+				))
+			} else {
+				field := lang.FirstToUpper(cond[k].Field)
+				value := cond[k].Value
 
-			switch conditions[k].Operator {
-			case "eq":
-				ms = append(ms, q.Eq(field, value))
-			case "ne":
-				ms = append(ms, q.Not(q.Eq(field, value)))
-			case "like":
-				ms = append(ms, costomStorm.Like(field, value))
-			case "not like":
-				ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				switch cond[k].Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				}
 			}
 		}
+	case []common.Condition:
+		// Handle slice-based conditions (new format)
+		for _, condition := range cond {
+			if condition.Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("Operator", condition.Value),
+					costomStorm.Like("Operation", condition.Value),
+					costomStorm.Like("Detail", condition.Value),
+				))
+			} else {
+				field := lang.FirstToUpper(condition.Field)
+				value := condition.Value
+
+				switch condition.Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				}
+			}
+		}
+	default:
+		// If no conditions are provided, return empty matcher
 	}
+	
 	query := db.Select(ms...).OrderBy("CreateAt").Reverse()
 	count, err := query.Count(&v1System.OperationLog{})
 	if err != nil {
@@ -94,29 +128,63 @@ func (s *service) SearchLoginLogs(num, size int, conditions common.Conditions, o
 	db := s.GetDB(options)
 
 	var ms []q.Matcher
-	for k := range conditions {
-		if conditions[k].Field == "quick" {
-			ms = append(ms, q.Or(
-				costomStorm.Like("UserName", conditions[k].Value),
-				costomStorm.Like("Ip", conditions[k].Value),
-				costomStorm.Like("City", conditions[k].Value),
-			))
-		} else {
-			field := lang.FirstToUpper(conditions[k].Field)
-			value := conditions[k].Value
+	
+	// Check the type of conditions and handle accordingly
+	switch cond := conditions.(type) {
+	case common.ConditionsMap:
+		// Handle map-based conditions (old format)
+		for k := range cond {
+			if cond[k].Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("UserName", cond[k].Value),
+					costomStorm.Like("Ip", cond[k].Value),
+					costomStorm.Like("City", cond[k].Value),
+				))
+			} else {
+				field := lang.FirstToUpper(cond[k].Field)
+				value := cond[k].Value
 
-			switch conditions[k].Operator {
-			case "eq":
-				ms = append(ms, q.Eq(field, value))
-			case "ne":
-				ms = append(ms, q.Not(q.Eq(field, value)))
-			case "like":
-				ms = append(ms, costomStorm.Like(field, value))
-			case "not like":
-				ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				switch cond[k].Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				}
 			}
 		}
+	case []common.Condition:
+		// Handle slice-based conditions (new format)
+		for _, condition := range cond {
+			if condition.Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("UserName", condition.Value),
+					costomStorm.Like("Ip", condition.Value),
+					costomStorm.Like("City", condition.Value),
+				))
+			} else {
+				field := lang.FirstToUpper(condition.Field)
+				value := condition.Value
+
+				switch condition.Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value)))
+				}
+			}
+		}
+	default:
+		// If no conditions are provided, return empty matcher
 	}
+	
 	query := db.Select(ms...).OrderBy("CreateAt").Reverse()
 	count, err := query.Count(&v1System.LoginLog{})
 	if err != nil {

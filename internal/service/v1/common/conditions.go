@@ -6,4 +6,10 @@ type Condition struct {
 	Value    string `json:"value"`
 }
 
-type Conditions map[string]Condition
+type Conditions interface{}
+
+// ConditionsMap represents the older map format of conditions
+type ConditionsMap map[string]Condition
+
+// ConditionsSlice represents the newer slice format of conditions
+type ConditionsSlice []Condition

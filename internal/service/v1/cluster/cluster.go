@@ -72,34 +72,73 @@ func (c *cluster) Search(num, size int, conditions common.Conditions, options co
 	db := c.GetDB(options)
 
 	var ms []q.Matcher
-	for k := range conditions {
-		if k == "quick" {
-			ms = append(ms, storm.Like("Name", conditions[k].Value))
-		} else if k == "labels" {
-			switch conditions[k].Operator {
-			case "like":
-				ms = append(ms, storm.ArrayValueLike("Labels", conditions[k].Value))
-			case "not like":
-				ms = append(ms, q.Not(storm.ArrayValueLike("Labels", conditions[k].Value)))
-			case "eq":
-				ms = append(ms, storm.ArrayValueEq("Labels", conditions[k].Value))
-			case "ne":
-				ms = append(ms, q.Not(storm.ArrayValueEq("Labels", conditions[k].Value)))
-			}
-		} else {
-			field := lang.FirstToUpper(conditions[k].Field)
-			switch conditions[k].Operator {
-			case "eq":
-				ms = append(ms, q.Eq(field, conditions[k].Value))
-			case "ne":
-				ms = append(ms, q.Not(q.Eq(field, conditions[k].Value)))
-			case "like":
-				ms = append(ms, storm.Like(field, conditions[k].Value))
-			case "not like":
-				ms = append(ms, q.Not(storm.Like(field, conditions[k].Value)))
+	
+	// Check the type of conditions and handle accordingly
+	switch cond := conditions.(type) {
+	case common.ConditionsMap:
+		// Handle map-based conditions (old format)
+		for k := range cond {
+			if k == "quick" {
+				ms = append(ms, storm.Like("Name", cond[k].Value))
+			} else if k == "labels" {
+				switch cond[k].Operator {
+				case "like":
+					ms = append(ms, storm.ArrayValueLike("Labels", cond[k].Value))
+				case "not like":
+					ms = append(ms, q.Not(storm.ArrayValueLike("Labels", cond[k].Value)))
+				case "eq":
+					ms = append(ms, storm.ArrayValueEq("Labels", cond[k].Value))
+				case "ne":
+					ms = append(ms, q.Not(storm.ArrayValueEq("Labels", cond[k].Value)))
+				}
+			} else {
+				field := lang.FirstToUpper(cond[k].Field)
+				switch cond[k].Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, cond[k].Value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, cond[k].Value)))
+				case "like":
+					ms = append(ms, storm.Like(field, cond[k].Value))
+				case "not like":
+					ms = append(ms, q.Not(storm.Like(field, cond[k].Value)))
+				}
 			}
 		}
+	case []common.Condition:
+		// Handle slice-based conditions (new format)
+		for _, condition := range cond {
+			if condition.Field == "quick" {
+				ms = append(ms, storm.Like("Name", condition.Value))
+			} else if condition.Field == "labels" {
+				switch condition.Operator {
+				case "like":
+					ms = append(ms, storm.ArrayValueLike("Labels", condition.Value))
+				case "not like":
+					ms = append(ms, q.Not(storm.ArrayValueLike("Labels", condition.Value)))
+				case "eq":
+					ms = append(ms, storm.ArrayValueEq("Labels", condition.Value))
+				case "ne":
+					ms = append(ms, q.Not(storm.ArrayValueEq("Labels", condition.Value)))
+				}
+			} else {
+				field := lang.FirstToUpper(condition.Field)
+				switch condition.Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, condition.Value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, condition.Value)))
+				case "like":
+					ms = append(ms, storm.Like(field, condition.Value))
+				case "not like":
+					ms = append(ms, q.Not(storm.Like(field, condition.Value)))
+				}
+			}
+		}
+	default:
+		// If no conditions are provided, return empty matcher
 	}
+	
 	query := db.Select(ms...).OrderBy("CreateAt").Reverse()
 	count, err := query.Count(&v1Cluster.Cluster{})
 	if err != nil {

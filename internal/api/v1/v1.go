@@ -19,6 +19,7 @@ import (
 	"github.com/KubeOperator/kubepi/internal/api/v1/cluster"
 	"github.com/KubeOperator/kubepi/internal/api/v1/imagerepo"
 	"github.com/KubeOperator/kubepi/internal/api/v1/ldap"
+	"github.com/KubeOperator/kubepi/internal/api/v1/llm"
 	"github.com/KubeOperator/kubepi/internal/api/v1/proxy"
 	"github.com/KubeOperator/kubepi/internal/api/v1/role"
 	"github.com/KubeOperator/kubepi/internal/api/v1/session"
@@ -42,7 +43,7 @@ import (
 	"github.com/kataras/iris/v12/core/router"
 )
 
-var resourceWhiteList = WhiteList{"sessions", "proxy", "ws", "charts", "webkubectl", "apps", "mfa", "pod"}
+var resourceWhiteList = WhiteList{"sessions", "proxy", "ws", "charts", "webkubectl", "apps", "mfa", "pod", "llmmodels"}
 
 type WhiteList []string
 
@@ -447,4 +448,5 @@ func AddV1Route(app iris.Party) {
 	ldap.Install(authParty)
 	imagerepo.Install(authParty)
 	file.Install(authParty)
+	llm.Install(authParty)
 }

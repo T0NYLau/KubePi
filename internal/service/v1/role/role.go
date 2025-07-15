@@ -110,25 +110,55 @@ func (s *service) Delete(name string, options common.DBOptions) error {
 func (s *service) Search(num, size int, conditions common.Conditions, options common.DBOptions) ([]v1Role.Role, int, error) {
 	db := s.GetDB(options)
 	var ms []q.Matcher
-	for k := range conditions {
-		if conditions[k].Field == "quick" {
-			ms = append(ms, costomStorm.Like("Name", conditions[k].Value))
-		} else {
-			filed := lang.FirstToUpper(conditions[k].Field)
-			value := lang.ParseValueType(conditions[k].Value)
+	
+	// Check the type of conditions and handle accordingly
+	switch cond := conditions.(type) {
+	case common.ConditionsMap:
+		// Handle map-based conditions (old format)
+		for k := range cond {
+			if cond[k].Field == "quick" {
+				ms = append(ms, costomStorm.Like("Name", cond[k].Value))
+			} else {
+				filed := lang.FirstToUpper(cond[k].Field)
+				value := lang.ParseValueType(cond[k].Value)
 
-			switch conditions[k].Operator {
-			case "eq":
-				ms = append(ms, q.Eq(filed, value))
-			case "ne":
-				ms = append(ms, q.Not(q.Eq(filed, value)))
-			case "like":
-				ms = append(ms, costomStorm.Like(filed, value.(string)))
-			case "not like":
-				ms = append(ms, q.Not(costomStorm.Like(filed, value.(string))))
+				switch cond[k].Operator {
+				case "eq":
+					ms = append(ms, q.Eq(filed, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(filed, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(filed, value.(string)))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(filed, value.(string))))
+				}
 			}
 		}
+	case []common.Condition:
+		// Handle slice-based conditions (new format)
+		for _, condition := range cond {
+			if condition.Field == "quick" {
+				ms = append(ms, costomStorm.Like("Name", condition.Value))
+			} else {
+				filed := lang.FirstToUpper(condition.Field)
+				value := lang.ParseValueType(condition.Value)
+
+				switch condition.Operator {
+				case "eq":
+					ms = append(ms, q.Eq(filed, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(filed, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(filed, value.(string)))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(filed, value.(string))))
+				}
+			}
+		}
+	default:
+		// If no conditions are provided, return empty matcher
 	}
+	
 	query := db.Select(ms...).OrderBy("Name")
 	count, err := query.Count(&v1Role.Role{})
 	if err != nil {

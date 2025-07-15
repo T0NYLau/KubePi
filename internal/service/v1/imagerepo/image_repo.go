@@ -153,27 +153,59 @@ func (s *service) ListByCluster(cluster string, options common.DBOptions) (resul
 func (s *service) Search(num, size int, conditions common.Conditions, options common.DBOptions) (result []V1ImageRepo.ImageRepo, count int, err error) {
 	db := s.GetDB(options)
 	var ms []q.Matcher
-	for k := range conditions {
-		if conditions[k].Field == "quick" {
-			ms = append(ms, q.Or(
-				costomStorm.Like("Name", conditions[k].Value),
-			))
-		} else {
-			field := lang.FirstToUpper(conditions[k].Field)
-			value := lang.ParseValueType(conditions[k].Value)
 
-			switch conditions[k].Operator {
-			case "eq":
-				ms = append(ms, q.Eq(field, value))
-			case "ne":
-				ms = append(ms, q.Not(q.Eq(field, value)))
-			case "like":
-				ms = append(ms, costomStorm.Like(field, value.(string)))
-			case "not like":
-				ms = append(ms, q.Not(costomStorm.Like(field, value.(string))))
+	// Check the type of conditions and handle accordingly
+	switch cond := conditions.(type) {
+	case common.ConditionsMap:
+		// Handle map-based conditions (old format)
+		for k := range cond {
+			if cond[k].Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("Name", cond[k].Value),
+				))
+			} else {
+				field := lang.FirstToUpper(cond[k].Field)
+				value := lang.ParseValueType(cond[k].Value)
+
+				switch cond[k].Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value.(string)))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value.(string))))
+				}
 			}
 		}
+	case []common.Condition:
+		// Handle slice-based conditions (new format)
+		for _, condition := range cond {
+			if condition.Field == "quick" {
+				ms = append(ms, q.Or(
+					costomStorm.Like("Name", condition.Value),
+				))
+			} else {
+				field := lang.FirstToUpper(condition.Field)
+				value := lang.ParseValueType(condition.Value)
+
+				switch condition.Operator {
+				case "eq":
+					ms = append(ms, q.Eq(field, value))
+				case "ne":
+					ms = append(ms, q.Not(q.Eq(field, value)))
+				case "like":
+					ms = append(ms, costomStorm.Like(field, value.(string)))
+				case "not like":
+					ms = append(ms, q.Not(costomStorm.Like(field, value.(string))))
+				}
+			}
+		}
+	default:
+		// If no conditions are provided, return empty matcher
 	}
+
 	query := db.Select(ms...).OrderBy("CreateAt").Reverse()
 	count, err = query.Count(&V1ImageRepo.ImageRepo{})
 	if err != nil {
