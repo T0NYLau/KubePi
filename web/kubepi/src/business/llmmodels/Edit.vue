@@ -9,7 +9,8 @@
           <el-input v-model="form.name" disabled />
         </el-form-item>
         <el-form-item :label="$t('business.llmmodels.base_uri')" prop="baseUri">
-          <el-input v-model="form.baseUri" placeholder="http://example.com" />
+          <el-input v-model="form.baseUri" placeholder="http://example.com/v1/chat/completions" />
+          <div class="el-form-item-tip">请输入完整的API端点URL，例如DeepSeek模型需要包含完整路径: http://ip:port/v1/chat/completions</div>
         </el-form-item>
         <el-form-item :label="$t('business.llmmodels.model_name')" prop="modelName">
           <el-input v-model="form.modelName" />
@@ -114,4 +115,13 @@ export default {
     }
   }
 };
-</script> 
+</script>
+
+<style scoped>
+.el-form-item-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.4;
+  padding-top: 4px;
+}
+</style> 

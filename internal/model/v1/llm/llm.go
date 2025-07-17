@@ -31,8 +31,9 @@ type ChatRequest struct {
 
 // ChatMessage represents a message in a chat
 type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role             string `json:"role"`
+	Content          string `json:"content"`
+	ReasoningContent string `json:"reasoning_content,omitempty"`
 }
 
 // ChatResponse represents a response from the LLM API

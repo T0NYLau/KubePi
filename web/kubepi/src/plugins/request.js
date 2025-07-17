@@ -6,7 +6,7 @@ import {getLanguage} from "@/i18n"
 const instance = axios.create({
     baseURL: "/kubepi", // url = base url + request url
     withCredentials: true,
-    timeout: 60000 // request timeout, default 1 min
+    timeout: 180000 // request timeout, increase to 3 minutes
 })
 
 
@@ -36,6 +36,37 @@ const checkAuth = response => {
 // 请根据实际需求修改
 instance.interceptors.response.use(response => {
     checkAuth(response)
+    
+    // 特殊处理LLM API响应
+    if (response.config.url.includes('/llmmodels') && response.config.url.includes('/test')) {
+        console.log('检测到LLM测试请求响应');
+        
+        // 如果响应是字符串，尝试解析为JSON
+        if (typeof response.data === 'string') {
+            try {
+                console.log('LLM响应是字符串，尝试解析为JSON');
+                response.data = JSON.parse(response.data);
+            } catch (e) {
+                console.log('无法将LLM响应解析为JSON，保持原样');
+            }
+        }
+        
+        // 处理DeepSeek特殊格式
+        if (response.data && 
+            response.data.choices && 
+            response.data.choices.length > 0 && 
+            response.data.choices[0].message && 
+            response.data.choices[0].message.content) {
+            
+            const content = response.data.choices[0].message.content;
+            const thinkEndIndex = content.indexOf('</think>');
+            if (thinkEndIndex !== -1) {
+                console.log('在全局拦截器中检测到</think>标记');
+                response.data.choices[0].message.content = content.substring(thinkEndIndex + 8).trim();
+            }
+        }
+    }
+    
     return response
 }, error => {
     let msg
