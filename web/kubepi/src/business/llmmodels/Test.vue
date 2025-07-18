@@ -355,7 +355,7 @@ export default {
               usage: (response.data && response.data.usage) || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
             };
           } else {
-            this.response = response.data;
+          this.response = response.data;
             
             // 确保所有content字段都经过formatContent处理
             if (this.response.choices && this.response.choices.length > 0) {
@@ -394,11 +394,11 @@ export default {
             };
           } else {
             this.$message.error(errorMsg);
-            this.response = {
-              error: {
+          this.response = {
+            error: {
                 message: errorMsg
-              }
-            };
+            }
+          };
           }
         })
         .finally(() => {

@@ -115,7 +115,7 @@ export default {
     }
   }
 };
-</script>
+</script> 
 
 <style scoped>
 .el-form-item-tip {

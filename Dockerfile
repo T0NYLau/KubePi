@@ -3,19 +3,22 @@ FROM node:18.10.0-alpine as stage-web-build
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache make
 ARG NPM_REGISTRY="https://registry.npmmirror.com"
-ENV NPM_REGISTY=$NPM_REGISTRY
+ENV NPM_REGISTRY=$NPM_REGISTRY
 
 LABEL stage=stage-web-build
 RUN set -ex \
     && npm config set registry ${NPM_REGISTRY}
 
-WORKDIR /build/kubepi/web
+WORKDIR /build/kubepi
 
 COPY . .
 
-RUN --mount=type=cache,target=/build/kubepi/web/dashboard/node_modules,id=my_web_dashboard_module,sharing=locked --mount=type=cache,target=/build/kubepi/web/kubepi/node_modules,id=my_web_kubepi_module,sharing=locked --mount=type=cache,target=/build/kubepi/web/terminal/node_modules,id=my_web_terminal_module,sharing=locked make build_web
-
-RUN rm -fr web
+# 使用常规构建方式，不使用缓存挂载
+# 确保安装特定版本的marked库以避免兼容性问题
+RUN cd /build/kubepi/web/kubepi && npm install && npm run-script build
+# 先单独安装marked库，确保版本一致性，然后再安装其他依赖
+RUN cd /build/kubepi/web/dashboard && npm install marked@4.3.0 && npm install && npm run-script build
+RUN cd /build/kubepi/web/terminal && npm install && npm run-script build
 
 FROM golang:1.23.2-alpine3.20 as stage-bin-build
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
@@ -31,7 +34,7 @@ LABEL stage=stage-bin-build
 
 WORKDIR /build/kubepi/bin
 
-COPY --from=stage-web-build /build/kubepi/web .
+COPY --from=stage-web-build /build/kubepi .
 
 RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked go mod download
 RUN --mount=type=cache,target=/root/go,id=my_app_go_module,sharing=locked go get go.uber.org/automaxprocs@latest
@@ -60,7 +63,7 @@ RUN ARCH=$(uname -m) \
     && tar zxvf fzf.tar.gz \
     && rm -rf fzf.tar.gz \
     && chmod -R 755 fzf \
-    #&& sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
+    && sed -i 's/https\:\/\/github.com/https\:\/\/gh.llkk.cc\/https\:\/\/github.com/g' fzf/install \
     && yes | fzf/install \
     && ln -s fzf/bin/fzf /usr/local/bin/fzf \
     && cd /tmp/ \

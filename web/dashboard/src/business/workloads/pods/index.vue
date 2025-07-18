@@ -141,6 +141,9 @@
               <el-dropdown-item icon="el-icon-delete" :disabled="!onCheckDeletePermissions()" command="delete_force">
                 {{ $t("commons.button.delete_force") }}
               </el-dropdown-item>
+              <el-dropdown-item icon="el-icon-cpu" command="ai_analysis">
+                {{ $t("business.pod.ai_analysis") }}
+              </el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
         </template>
@@ -214,6 +217,21 @@
         @close="logDialogVisible = false"
       />
     </el-dialog>
+
+    <el-dialog
+      :title="$t('business.pod.ai_analysis')"
+      :visible.sync="aiAnalysisDialogVisible"
+      width="80%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <pod-ai-analysis
+        v-if="aiAnalysisDialogVisible"
+        :name="selectedPod.name"
+        :namespace="selectedPod.namespace"
+        :cluster="clusterName"
+        @close="aiAnalysisDialogVisible = false"
+      />
+    </el-dialog>
   </layout-content>
   </div>
 </template>
@@ -232,6 +250,7 @@ import PodEdit from "./edit"
 import PodFileBrowser from "./podfilebrowser"
 import PodTop from "./top"
 import Terminal from "@/business/workloads/terminal";
+import PodAiAnalysis from "./ai-analysis";
 export default {
   name: "Pods",
   components: { 
@@ -240,7 +259,8 @@ export default {
     PodEdit,
     PodFileBrowser,
     PodTop,
-    Terminal
+    Terminal,
+    PodAiAnalysis
   },
   data () {
     return {
@@ -272,6 +292,7 @@ export default {
       logDialogVisible: false,
       terminalDialogParams: {},
       logDialogParams: {},
+      aiAnalysisDialogVisible: false,
     }
   },
   methods: {
@@ -311,6 +332,9 @@ export default {
           break
         case "files":
           this.openPodFiles(row)
+          break
+        case "ai_analysis":
+          this.openAiAnalysis(row)
           break
       }
     },
@@ -703,6 +727,13 @@ export default {
               })
               window.open(routeUrl.href, "_blank")
       }
+    },
+    openAiAnalysis(row) {
+      this.selectedPod = {
+        name: row.metadata.name,
+        namespace: row.metadata.namespace
+      }
+      this.aiAnalysisDialogVisible = true
     },
   },
   mounted () {

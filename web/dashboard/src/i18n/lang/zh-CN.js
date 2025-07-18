@@ -280,7 +280,18 @@ const message = {
       name_helper: "支持 '/' 来创建多级目录",
       link_tip: "链接文件/文件夹 不支持此操作",
       previous: "上次失败的日志",
-      timestamps: "显示日志时间"
+      timestamps: "显示日志时间",
+      ai_analysis: "AI分析",
+      analysis_scope: "分析范围",
+      log_lines: "日志行数",
+      analyze: "开始分析",
+      analyzing: "分析中...",
+      analysis_result: "分析结果",
+      select_model: "选择AI模型",
+      pod_status: "Pod状态",
+      pod_logs: "Pod日志",
+      pod_events: "Pod事件",
+      no_models: "没有可用的LLM模型"
     },
     namespace: {
       namespace: "命名空间",

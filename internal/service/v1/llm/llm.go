@@ -132,7 +132,7 @@ func (s *service) TestConnection(name string, testReq *llm.TestRequest, options 
 		fmt.Printf("JSON序列化请求失败: %v\n", err)
 		return nil, err
 	}
-	
+
 	// 打印完整的请求JSON
 	fmt.Printf("发送到LLM的完整请求JSON: %s\n", string(jsonData))
 
@@ -297,7 +297,7 @@ func (s *service) TestConnection(name string, testReq *llm.TestRequest, options 
 	fmt.Printf("最终处理后的响应内容(前100个字符): %s\n", finalContent[:min(100, len(finalContent))])
 
 	// Update model status
-	model.Status = "available"
+		model.Status = "available"
 	model.LastTestTime = time.Now()
 	s.Update(model, options)
 
