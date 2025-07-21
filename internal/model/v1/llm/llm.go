@@ -71,4 +71,5 @@ type ChatError struct {
 // TestRequest represents a request to test an LLM model
 type TestRequest struct {
 	Content string `json:"content"`
+	Stream  bool   `json:"stream,omitempty"`
 } 

@@ -1,10 +1,12 @@
 package llm
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -24,6 +26,9 @@ func min(x, y int) int {
 	return y
 }
 
+// WriteFunc 定义一个写入函数类型，用于处理流式响应
+type WriteFunc func([]byte) (int, error)
+
 type Service interface {
 	common.DBService
 	Get(name string, options common.DBOptions) (*llm.LLMModel, error)
@@ -32,6 +37,7 @@ type Service interface {
 	Update(model *llm.LLMModel, options common.DBOptions) error
 	Delete(name string, options common.DBOptions) error
 	TestConnection(name string, testReq *llm.TestRequest, options common.DBOptions) (*llm.ChatResponse, error)
+	TestConnectionStream(name string, testReq *llm.TestRequest, writer WriteFunc, options common.DBOptions) error
 }
 
 type service struct {
@@ -297,9 +303,178 @@ func (s *service) TestConnection(name string, testReq *llm.TestRequest, options 
 	fmt.Printf("最终处理后的响应内容(前100个字符): %s\n", finalContent[:min(100, len(finalContent))])
 
 	// Update model status
-		model.Status = "available"
+	model.Status = "available"
 	model.LastTestTime = time.Now()
 	s.Update(model, options)
 
 	return &chatResp, nil
+}
+
+// TestConnectionStream 处理流式LLM响应
+func (s *service) TestConnectionStream(name string, testReq *llm.TestRequest, writer WriteFunc, options common.DBOptions) error {
+	model, err := s.Get(name, options)
+	if err != nil {
+		return err
+	}
+	
+	// 创建带流式参数的请求
+	chatReq := llm.ChatRequest{
+		Model: model.ModelName,
+		Messages: []llm.ChatMessage{
+			{
+				Role:    "system",
+				Content: "你是一个k8s的专家，请帮我分析pod的日志和event后，给出pod故障的原因以及解决方案.",
+			},
+			{
+				Role:    "user",
+				Content: testReq.Content,
+			},
+		},
+		Temperature: model.Temperature,
+		Stream:      true, // 启用流式响应
+	}
+	
+	// 转换为JSON
+	jsonData, err := json.Marshal(chatReq)
+	if err != nil {
+		fmt.Printf("JSON序列化流式请求失败: %v\n", err)
+		return err
+	}
+	
+	// 打印完整的请求JSON
+	fmt.Printf("发送到LLM的流式请求JSON: %s\n", string(jsonData))
+	
+	// 创建带较长超时的HTTP客户端
+	client := &http.Client{
+		Timeout: 300 * time.Second, // 流式请求使用更长的超时时间
+	}
+	
+	endpoint := model.BaseURI
+	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Printf("创建流式HTTP请求失败: %v\n", err)
+		return err
+	}
+	
+	// 设置HTTP头
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "text/event-stream")
+	if model.APIKey != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", model.APIKey))
+	}
+	
+	// 记录请求开始时间
+	startTime := time.Now()
+	fmt.Printf("开始流式请求LLM API: %s, 时间: %s\n", endpoint, startTime.Format("2006-01-02 15:04:05"))
+	
+	// 发送请求
+	resp, err := client.Do(req)
+	if err != nil {
+		// 记录请求失败信息
+		fmt.Printf("流式请求LLM API失败: %v, 耗时: %v\n", err, time.Since(startTime))
+		// 更新模型状态为不可用
+		model.Status = "unavailable"
+		model.LastTestTime = time.Now()
+		s.Update(model, options)
+		return err
+	}
+	defer resp.Body.Close()
+	
+	// 记录请求完成开始接收流式数据的时间
+	fmt.Printf("LLM API流式响应开始, 状态码: %d, 等待时间: %v\n", resp.StatusCode, time.Since(startTime))
+	
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		// 尝试读取错误信息
+		body, _ := ioutil.ReadAll(resp.Body)
+		errMsg := fmt.Sprintf("LLM API返回非200状态码: %d, 响应: %s", resp.StatusCode, string(body))
+		fmt.Println(errMsg)
+		return fmt.Errorf(errMsg)
+	}
+	
+	// 创建缓冲读取器
+	reader := bufio.NewReader(resp.Body)
+	
+	// 用于跟踪处理的消息数量
+	messageCount := 0
+	
+	// 持续读取流式响应
+	for {
+		// 读取一行数据
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				// 正常结束
+				break
+			}
+			fmt.Printf("读取流式响应行失败: %v\n", err)
+			return err
+		}
+		
+		// 跳过空行
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		
+		// 处理SSE格式的行 (data: {...})
+		if strings.HasPrefix(line, "data:") {
+			// 提取数据部分
+			data := strings.TrimSpace(line[5:])
+			
+			// 检查是否是结束标记
+			if data == "[DONE]" {
+				fmt.Println("收到流式响应结束标记")
+				break
+			}
+			
+			// 直接将SSE格式的行写入响应
+			messageData := []byte(line + "\n\n")
+			_, err := writer(messageData)
+			if err != nil {
+				fmt.Printf("写入流式响应失败: %v\n", err)
+				return err
+			}
+			
+			messageCount++
+			if messageCount % 5 == 0 {
+				fmt.Printf("已处理 %d 条流式消息\n", messageCount)
+			}
+			
+			continue
+		}
+		
+		// 非SSE格式的响应行，尝试解析为JSON并转换为SSE格式
+		var chunk map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &chunk); err == nil {
+			// 成功解析为JSON，转换为SSE格式
+			sseData := fmt.Sprintf("data: %s\n\n", line)
+			_, err := writer([]byte(sseData))
+			if err != nil {
+				fmt.Printf("写入转换后的SSE数据失败: %v\n", err)
+				return err
+			}
+			
+			messageCount++
+			continue
+		}
+		
+		// 如果不是JSON也不是SSE格式，则直接以SSE格式包装发送
+		sseData := fmt.Sprintf("data: %s\n\n", line)
+		_, err = writer([]byte(sseData))
+		if err != nil {
+			fmt.Printf("写入非JSON非SSE行失败: %v\n", err)
+			return err
+		}
+	}
+	
+	// 记录流式处理完成信息
+	fmt.Printf("流式响应处理完成，共处理 %d 条消息, 总耗时: %v\n", messageCount, time.Since(startTime))
+	
+	// 更新模型状态
+	model.Status = "available"
+	model.LastTestTime = time.Now()
+	s.Update(model, options)
+	
+	return nil
 } 

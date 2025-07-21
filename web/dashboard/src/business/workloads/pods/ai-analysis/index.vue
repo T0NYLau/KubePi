@@ -225,44 +225,34 @@ export default {
     },
     formattedStreamingResult() {
       if (!this.streamingResult) return '';
+      
       try {
-        // 尝试使用marked处理markdown
-        let markedContent = '';
-        let markedSuccess = false;
+        // 简单清理文本，移除可能的元数据
+        const cleanText = this.streamingResult.replace(/data:\s*\{.*?\}/g, '');
         
+        // 优先使用marked.js进行Markdown渲染
         if (typeof marked === 'function') {
           try {
-            markedContent = marked(this.streamingResult);
-            markedSuccess = true;
+            return marked(cleanText);
           } catch (e) {
-            console.error("流式显示使用marked函数处理失败:", e);
+            console.error('marked渲染失败', e);
           }
         } else if (marked && typeof marked.parse === 'function') {
           try {
-            markedContent = marked.parse(this.streamingResult);
-            markedSuccess = true;
+            return marked.parse(cleanText);
           } catch (e) {
-            console.error("流式显示使用marked.parse处理失败:", e);
+            console.error('marked.parse渲染失败', e);
           }
         }
         
-        if (!markedSuccess) {
-          markedContent = this.simpleMarkdownToHtml(this.streamingResult);
-        }
-        
-        // 如果有DOMPurify可用，使用它清理HTML
-        let finalContent = markedContent;
-        if (window.DOMPurify) {
-          try {
-            finalContent = window.DOMPurify.sanitize(markedContent);
-          } catch (e) {
-            console.error("流式显示使用DOMPurify清理失败:", e);
-          }
-        }
-        
-        return finalContent || this.streamingResult;
+        // 如果marked不可用或失败，使用简单替换
+        return cleanText
+          .replace(/\n/g, '<br>')
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>');
       } catch (e) {
-        console.error('处理流式Markdown出错:', e);
+        console.error('格式化流式内容失败:', e);
         return this.streamingResult;
       }
     }
@@ -288,12 +278,12 @@ export default {
       }
     },
     
-    // 简单的Markdown转HTML函数
-    simpleMarkdownToHtml(markdown) {
-      if (!markdown) return '';
+    // 简单的Markdown转HTML处理
+    simpleMarkdownToHtml(markdownText) {
+      if (!markdownText) return '';
       
-      // 预处理：修复可能的特殊字符问题
-      let processedMarkdown = markdown
+      // 清理并统一换行符
+      let processedMarkdown = markdownText
         .replace(/\r\n/g, '\n')  // 统一换行符
         .replace(/\u00A0/g, ' '); // 替换不间断空格
       
@@ -301,6 +291,13 @@ export default {
       processedMarkdown = processedMarkdown.replace(/```([\s\S]*?)```/g, function(match, code) {
         return '<pre><code>' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>';
       });
+      
+      // 处理未闭合的代码块 (流式输出可能导致代码块未闭合)
+      const unclosedCodeBlockMatch = processedMarkdown.match(/```([\s\S]*)$/);
+      if (unclosedCodeBlockMatch) {
+        const code = unclosedCodeBlockMatch[1];
+        processedMarkdown = processedMarkdown.replace(/```([\s\S]*)$/, '<pre><code>' + code.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</code></pre>');
+      }
       
       // 处理内联代码 (必须在代码块之后处理)
       processedMarkdown = processedMarkdown.replace(/`([^`]+)`/g, function(match, code) {
@@ -324,15 +321,31 @@ export default {
         result += processedMarkdown.substring(lastIndex, listMatches.index);
         
         // 添加列表项
-        result += '<ul><li>' + listMatches[1] + '</li></ul>';
+        result += '<li>' + listMatches[1] + '</li>';
         
-        // 更新lastIndex
+        // 更新最后处理位置
         lastIndex = listMatches.index + listMatches[0].length;
       }
       
       // 添加剩余内容
       result += processedMarkdown.substring(lastIndex);
       processedMarkdown = result;
+      
+      // 检查是否有列表项，如果有则添加<ul>标签
+      if (processedMarkdown.includes('<li>')) {
+        // 简单地在第一个<li>前添加<ul>，在最后一个</li>后添加</ul>
+        const firstLiIndex = processedMarkdown.indexOf('<li>');
+        const lastLiIndex = processedMarkdown.lastIndexOf('</li>') + 5;
+        
+        if (firstLiIndex >= 0 && lastLiIndex >= 5) {
+          processedMarkdown = 
+            processedMarkdown.substring(0, firstLiIndex) + 
+            '<ul>' + 
+            processedMarkdown.substring(firstLiIndex, lastLiIndex) + 
+            '</ul>' + 
+            processedMarkdown.substring(lastLiIndex);
+        }
+      }
       
       // 处理加粗
       processedMarkdown = processedMarkdown.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -349,11 +362,16 @@ export default {
       if (!processedMarkdown.startsWith('<h1>') && 
           !processedMarkdown.startsWith('<h2>') && 
           !processedMarkdown.startsWith('<h3>') && 
-          !processedMarkdown.startsWith('<p>')) {
+          !processedMarkdown.startsWith('<p>') &&
+          !processedMarkdown.startsWith('<ul>')) {
         processedMarkdown = '<p>' + processedMarkdown;
       }
       
-      if (!processedMarkdown.endsWith('</p>')) {
+      if (!processedMarkdown.endsWith('</p>') && 
+          !processedMarkdown.endsWith('</h1>') && 
+          !processedMarkdown.endsWith('</h2>') && 
+          !processedMarkdown.endsWith('</h3>') && 
+          !processedMarkdown.endsWith('</ul>')) {
         processedMarkdown += '</p>';
       }
       
@@ -538,64 +556,59 @@ export default {
         // 创建一个新的AbortController，以便能够取消请求
         this.abortController = new AbortController();
         const signal = this.abortController.signal;
+
+        // 立即更新UI状态，使得用户知道分析已经开始
+        this.$nextTick(() => {
+          // 强制滚动到底部，确保用户能看到分析结果开始显示
+          const resultContent = document.querySelector('.result-content');
+          if (resultContent) {
+            resultContent.scrollTop = resultContent.scrollHeight;
+          }
+        });
         
-        // 确保我们有一个处理流式数据的函数
-        const handleStreamProgress = (chunk) => {
-          console.log("收到流式数据块:", typeof chunk, chunk ? chunk.length : 0);
-          
-          if (!chunk) return;
-          
-          let content = '';
-          
-          // 处理不同格式的响应块
-          if (typeof chunk === 'string') {
-            // 尝试处理可能的SSE格式 (data: {...})
-            const lines = chunk.split('\n').filter(line => line.trim() !== '');
-            
-            for (const line of lines) {
+        // 非常简单的处理函数，直接将接收到的文本添加到结果中
+        const handleStreamContent = (text) => {
+          try {
+            // 如果收到的是JSON字符串，尝试解析并提取内容
+            if (text.startsWith('{') && text.endsWith('}')) {
               try {
-                if (line.startsWith('data: ')) {
-                  const jsonStr = line.substring(6).trim();
-                  if (jsonStr === '[DONE]') continue;
-                  
-                  const json = JSON.parse(jsonStr);
-                  const chunkContent = this.findContentInResponse(json);
-                  if (chunkContent) {
-                    content += chunkContent;
-                  }
-                } else {
-                  // 尝试解析为JSON
-                  const json = JSON.parse(line);
-                  const chunkContent = this.findContentInResponse(json);
-                  if (chunkContent) {
-                    content += chunkContent;
-                  }
+                const json = JSON.parse(text);
+                // 优先检查delta.content (流式增量内容)
+                if (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) {
+                  text = json.choices[0].delta.content;
+                } 
+                // 其次检查message.content (完整消息内容)
+                else if (json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) {
+                  text = json.choices[0].message.content;
+                }
+                // 再次检查直接的content字段
+                else if (json.content) {
+                  text = json.content;
                 }
               } catch (e) {
-                // 如果不是JSON，视为纯文本增量
-                content += line;
+                // JSON解析失败，使用原始文本
+                console.log('JSON解析失败，使用原始文本', e);
               }
             }
-          } else if (typeof chunk === 'object') {
-            // 对象类型，尝试直接提取内容
-            const chunkContent = this.findContentInResponse(chunk);
-            if (chunkContent) {
-              content = chunkContent;
+
+            // 只有当文本不为空时才更新结果
+            if (text && text.trim()) {
+              // 使用Vue的响应式更新
+              this.$set(this, 'streamingResult', this.streamingResult + text);
+
+              // 分析中状态设为false，表示内容开始显示
+              this.analyzing = false;
+              
+              // 更新UI并滚动到底部
+              this.$nextTick(() => {
+                const resultContent = document.querySelector('.result-content');
+                if (resultContent) {
+                  resultContent.scrollTop = resultContent.scrollHeight;
+                }
+              });
             }
-          }
-          
-          // 如果解析出内容，更新streamingResult
-          if (content) {
-            content = this.processEscapeCharacters(content);
-            console.log("处理后的流式内容:", content);
-            
-            // 使用Vue的响应式更新
-            this.$set(this, 'streamingResult', this.streamingResult + content);
-            
-            // 强制重新渲染视图
-            this.$nextTick(() => {
-              // DOM更新完成后的操作，例如滚动到底部
-            });
+          } catch (e) {
+            console.error('处理流数据出错:', e);
           }
         };
         
@@ -604,32 +617,21 @@ export default {
         // 使用更新后的API，启用流式传输
         const response = await testLLMModel(this.form.selectedModel, prompt, {
           streaming: true,
-          onProgress: handleStreamProgress,
+          onProgress: handleStreamContent,
           signal: signal
         });
         
         console.log("流式请求完成");
         
-        // 请求完成后，获取最终结果
-        if (response && response.data) {
-          const content = this.findContentInResponse(response.data);
-          if (content) {
-            const processedContent = this.processEscapeCharacters(content);
-            
-            // 如果流式过程中没有收到任何内容，使用最终结果
-            if (!this.streamingResult || this.streamingResult.trim() === '') {
-              this.$set(this, 'streamingResult', processedContent);
-            }
-            
-            // 确保结果保存
-            this.result = this.streamingResult;
-            
-            // 初始化聊天历史
-            this.chatHistory = [
-              { role: 'user', content: prompt },
-              { role: 'assistant', content: this.result }
-            ];
-          }
+        // 确保结果保存
+        if (this.streamingResult) {
+          this.result = this.streamingResult;
+          
+          // 初始化聊天历史
+          this.chatHistory = [
+            { role: 'user', content: prompt },
+            { role: 'assistant', content: this.streamingResult }
+          ];
         }
         
         return this.streamingResult;
@@ -638,9 +640,11 @@ export default {
           console.log('请求被取消');
         } else {
           console.error('流式请求失败:', error);
-          throw error;
+          this.$message.error("分析失败: " + (error.message || "未知错误"));
         }
       } finally {
+        // 无论成功还是失败，都将analyzing状态设为false
+        this.analyzing = false;
         this.abortController = null;
       }
     },
@@ -875,6 +879,7 @@ export default {
         return;
       }
 
+      // 重置状态
       this.analyzing = true;
       this.result = null;
       this.streamingResult = '';
@@ -913,11 +918,10 @@ export default {
         const prompt = this.buildPrompt(analysisData);
         
         console.log("发送AI分析请求，模型:", this.form.selectedModel);
-        console.log("分析内容包含日志:", analysisData.logs ? "是" : "否", "日志长度:", analysisData.logs ? analysisData.logs.length : 0);
-        console.log("分析内容包含事件:", analysisData.events.length > 0 ? "是" : "否", "事件数:", analysisData.events.length);
         
-        // 使用流式显示
+        // 立即显示结果区域，准备接收流式内容
         if (this.streamingMode) {
+          // 使用流式显示
           await this.streamData(prompt);
         } else {
           // 调用AI进行分析 (非流式方式)
@@ -930,22 +934,13 @@ export default {
             throw new Error("未收到响应");
           }
           
-          // 使用辅助方法递归查找内容
-          let content = this.findContentInResponse(response);
+          // 使用原有函数提取内容
+          let content = this.findContentInResponse(response.data);
           
           if (!content) {
             // 记录完整的响应结构，帮助调试
             console.error("无法从响应中提取内容，完整响应:", JSON.stringify(response));
             throw new Error("无法从响应中提取内容");
-          }
-          
-          console.log("AI原始响应内容:", content.substring(0, 100) + "...");
-          
-          // 处理可能存在的</think>标记
-          if (content.includes('</think>')) {
-            console.log("检测到</think>标记，进行处理");
-            const parts = content.split('</think>');
-            content = parts[parts.length - 1].trim();
           }
           
           // 处理转义字符
@@ -958,11 +953,15 @@ export default {
           
           console.log("处理后的AI响应内容:", content.substring(0, 100) + "...");
           this.result = content;
+          
+          // 分析完成，更新状态
+          this.analyzing = false;
         }
       } catch (error) {
         console.error("AI分析失败:", error);
         this.$message.error("AI分析失败: " + (error.message || "未知错误"));
-      } finally {
+        
+        // 确保状态被更新
         this.analyzing = false;
       }
     },

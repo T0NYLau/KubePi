@@ -25,67 +25,125 @@ export function deleteLLMModel(name) {
 }
 
 export function testLLMModel(name, content, options = {}) {
-    // 使用自定义axios实例，单独为LLM请求设置更长的超时时间
+    console.log(`开始LLM测试请求: ${new Date().toISOString()}, 模型名称: ${name}, 流式模式: ${options.streaming ? '是' : '否'}`);
+
+    // 如果是流式传输模式，使用fetch和ReadableStream
+    if (options.streaming) {
+        return new Promise((resolve, reject) => {
+            // 创建请求配置
+            const fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                },
+                body: JSON.stringify({ content, stream: true }),
+                credentials: 'include'
+            };
+
+            // 如果提供了AbortController，添加到请求选项
+            if (options.signal) {
+                fetchOptions.signal = options.signal;
+            }
+
+            // 使用fetch API发送请求
+            fetch(`/kubepi${baseUrl}/${name}/test`, fetchOptions)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    
+                    // 获取响应的可读流
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = '';
+                    
+                    // 使用async函数处理流
+                    async function readStream() {
+                        try {
+                            while (true) {
+                                // 读取数据块
+                                const { value, done } = await reader.read();
+                                
+                                // 如果流结束，退出循环
+                                if (done) {
+                                    console.log('流结束');
+                                    break;
+                                }
+                                
+                                // 解码数据块并添加到缓冲区
+                                const text = decoder.decode(value, { stream: true });
+                                buffer += text;
+                                
+                                // 按行处理数据
+                                const lines = buffer.split('\n');
+                                
+                                // 保留最后一行（可能不完整）作为新的缓冲区
+                                buffer = lines.pop() || '';
+                                
+                                // 处理每一行
+                                for (const line of lines) {
+                                    if (line.trim() === '') continue;
+                                    
+                                    // 处理SSE格式数据
+                                    if (line.startsWith('data:')) {
+                                        const eventData = line.substring(5).trim();
+                                        
+                                        // 检查是否是结束标记
+                                        if (eventData === '[DONE]') {
+                                            console.log('收到[DONE]标记');
+                                            continue;
+                                        }
+                                        
+                                        // 将数据传递给回调函数
+                                        if (options.onProgress) {
+                                            try {
+                                                options.onProgress(eventData);
+                                            } catch (e) {
+                                                console.error('处理进度回调时出错:', e);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // 处理缓冲区中剩余的数据
+                            if (buffer.trim() !== '' && options.onProgress) {
+                                options.onProgress(buffer);
+                            }
+                            
+                            // 解析为空对象的响应，因为实际内容已经通过onProgress回调处理了
+                            resolve({ data: {} });
+                        } catch (error) {
+                            console.error('读取流时出错:', error);
+                            reject(error);
+                        }
+                    }
+                    
+                    // 开始读取流
+                    readStream();
+                })
+                .catch(error => {
+                    console.error('LLM测试请求失败:', error);
+                    $error(error.message || '请求失败');
+                    reject(error);
+                });
+        });
+    }
+    
+    // 非流式模式 - 使用常规请求
     const llmAxios = axios.create({
         baseURL: "/kubepi",
         withCredentials: true,
-        timeout: 300000, // 5分钟超时，给大型模型留出足够的响应时间
+        timeout: 300000, // 5分钟超时
     });
     
-    // 记录请求开始时间
-    console.log(`开始LLM测试请求: ${new Date().toISOString()}, 模型名称: ${name}, 内容长度: ${content.length}, 流式模式: ${options.streaming ? '是' : '否'}`);
-
-    // 如果是流式传输模式
-    if (options.streaming) {
-        const requestOptions = {
-            method: 'POST',
-            url: `${baseUrl}/${name}/test`,
-            data: {content, stream: true},
-            responseType: 'text',
-        };
-        
-        // 添加进度回调
-        if (options.onProgress && typeof options.onProgress === 'function') {
-            requestOptions.onDownloadProgress = function(progressEvent) {
-                // 确保我们有响应数据
-                if (progressEvent.currentTarget && typeof progressEvent.currentTarget.response === 'string') {
-                    const responseText = progressEvent.currentTarget.response;
-                    options.onProgress(progressEvent);
-                    
-                    // 调试信息 - 每次进度更新时记录接收到的新数据量
-                    console.log(`流数据更新: 收到 ${responseText.length} 字节的数据，当前时间: ${new Date().toISOString()}`);
-                }
-            };
-        }
-
-        // 如果提供了AbortController，添加到请求选项
-        if (options.signal) {
-            requestOptions.signal = options.signal;
-        }
-
-        // 确保发送正确的流式请求标志
-        requestOptions.headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'text/event-stream'
-        };
-        
-        return llmAxios(requestOptions);
-    }
-    
-    // 非流式模式 - 使用原有实现
-    return new Promise((resolve, reject) => {
-        llmAxios.post(`${baseUrl}/${name}/test`, {content})
-            .then(response => {
-                // 记录请求完成时间和状态
-                console.log(`LLM测试请求完成: ${new Date().toISOString()}, 状态: ${response.status}`);
-                resolve(response);
-            })
-            .catch(error => {
-                console.error('LLM测试请求失败:', error);
-                $error(error.response?.data?.message || error.message || '请求失败');
-                reject(error);
-            });
-    });
+    return llmAxios.post(`${baseUrl}/${name}/test`, { content })
+        .catch(error => {
+            console.error('LLM测试请求失败:', error);
+            $error(error.response?.data?.message || error.message || '请求失败');
+            throw error;
+        });
 }
 
 export function searchLLMModels(pageNum, pageSize, conditions) {
