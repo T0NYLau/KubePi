@@ -270,7 +270,7 @@ func (h *Handler) Search() iris.Handler {
 		}
 		ctx.Values().Set("data", pkgV1.Page{Items: filteredModels[start:end], Total: total})
 	}
-} 
+}
 
 func Install(parent iris.Party) {
 	handler := NewHandler()

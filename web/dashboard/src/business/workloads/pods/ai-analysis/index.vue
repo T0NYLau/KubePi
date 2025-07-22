@@ -20,11 +20,12 @@
             <el-checkbox label="status">{{ $t('business.pod.pod_status') }}</el-checkbox>
             <el-checkbox label="logs">{{ $t('business.pod.pod_logs') }}</el-checkbox>
             <el-checkbox label="events">{{ $t('business.pod.pod_events') }}</el-checkbox>
-            <el-checkbox label="yaml">{{ $t('business.pod.pod_yaml') }}</el-checkbox>
+            <el-checkbox label="yaml">yaml</el-checkbox>
+            <el-checkbox label="previousLogs">上一次失败的日志</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
         
-        <el-form-item :label="$t('business.pod.log_lines')" v-if="form.analysisTypes.includes('logs')">
+        <el-form-item :label="$t('business.pod.log_lines')" v-if="form.analysisTypes.includes('logs') || form.analysisTypes.includes('previousLogs')">
           <el-select v-model="form.logLines" :placeholder="$t('business.pod.lines')">
             <el-option :label="$t('business.pod.last_20_lines')" value="20"></el-option>
             <el-option :label="$t('business.pod.last_100_lines')" value="100"></el-option>
@@ -67,7 +68,10 @@
       </div>
 
       <div v-if="result || streamingResult" class="analysis-result dark-theme">
-        <h3>{{ $t('business.pod.analysis_result') }}</h3>
+        <div class="top-actions">
+          <h3>{{ $t('business.pod.analysis_result') }}</h3>
+          <el-button type="text" icon="el-icon-top" @click="scrollToTop" class="scroll-top-btn">回到顶部</el-button>
+        </div>
         <el-divider></el-divider>
         <div class="result-content">
           <div v-html="formattedResult" v-if="!streamingMode"></div>
@@ -92,6 +96,7 @@
           <el-button type="primary" @click="sendChatMessage" :disabled="chatSending || !chatMessage.trim()">
             {{ chatSending ? '发送中...' : '发送' }}
           </el-button>
+          <el-button type="text" icon="el-icon-top" @click="scrollToDialogTop" class="to-top-btn">TOP</el-button>
         </div>
       </div>
       
@@ -148,7 +153,7 @@ export default {
       chatMessage: "",
       chatSending: false,
       form: {
-        analysisTypes: ["status", "events", "logs", "yaml"],
+        analysisTypes: ["status", "events", "yaml", "previousLogs"],
         logLines: "100",
         selectedModel: ""
       }
@@ -251,7 +256,7 @@ export default {
           .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
           .replace(/\*([^*]+)\*/g, '<em>$1</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>');
-      } catch (e) {
+          } catch (e) {
         console.error('格式化流式内容失败:', e);
         return this.streamingResult;
       }
@@ -285,7 +290,12 @@ export default {
       // 清理并统一换行符
       let processedMarkdown = markdownText
         .replace(/\r\n/g, '\n')  // 统一换行符
-        .replace(/\u00A0/g, ' '); // 替换不间断空格
+        .replace(/\u00A0/g, ' ') // 替换不间断空格
+        .replace(/chatcmpl-[a-zA-Z0-9]+/g, '') // 移除chatcmpl-ID
+        .replace(/\b[a-f0-9]{32}\b/g, '') // 移除32位十六进制ID
+        .replace(/\b[a-f0-9]{24}\b/g, '') // 移除24位十六进制ID
+        .replace(/\b[a-f0-9]{8}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{12}\b/g, '') // 移除UUID格式
+        .replace(/\b[0-9a-f]{8,40}\b/g, ''); // 移除其他可能的哈希/ID格式
       
       // 处理代码块 (必须先处理，避免内部内容被其他规则匹配)
       processedMarkdown = processedMarkdown.replace(/```([\s\S]*?)```/g, function(match, code) {
@@ -310,8 +320,12 @@ export default {
         .replace(/^## (.*$)/gim, '<h2>$1</h2>')
         .replace(/^# (.*$)/gim, '<h1>$1</h1>');
       
-      // 处理列表 (改进列表处理，避免嵌套问题)
-      const listItemRegex = /^[*-] (.*)$/gm;
+      // 改进列表处理
+      // 处理有序列表
+      processedMarkdown = processedMarkdown.replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>');
+      
+      // 处理无序列表 (改进列表处理，避免嵌套问题)
+      const listItemRegex = /^[*\-+] (.*)$/gm;
       let listMatches;
       let lastIndex = 0;
       let result = '';
@@ -333,17 +347,75 @@ export default {
       
       // 检查是否有列表项，如果有则添加<ul>标签
       if (processedMarkdown.includes('<li>')) {
-        // 简单地在第一个<li>前添加<ul>，在最后一个</li>后添加</ul>
-        const firstLiIndex = processedMarkdown.indexOf('<li>');
-        const lastLiIndex = processedMarkdown.lastIndexOf('</li>') + 5;
+        // 改进列表处理逻辑，处理多个列表的情况
+        const segments = processedMarkdown.split(/<\/li>\s*(?![^\n]*<li>)/g);
+        processedMarkdown = '';
         
-        if (firstLiIndex >= 0 && lastLiIndex >= 5) {
-          processedMarkdown = 
-            processedMarkdown.substring(0, firstLiIndex) + 
-            '<ul>' + 
-            processedMarkdown.substring(firstLiIndex, lastLiIndex) + 
-            '</ul>' + 
-            processedMarkdown.substring(lastLiIndex);
+        for (let i = 0; i < segments.length; i++) {
+          const segment = segments[i];
+          if (segment.includes('<li>')) {
+            // 找到列表开始和结束位置
+            const startIdx = segment.indexOf('<li>');
+            const endIdx = segment.lastIndexOf('</li>') + 5;
+            
+            if (startIdx >= 0 && endIdx >= 5) {
+              // 将列表包装在<ul>标签中
+              processedMarkdown += 
+                segment.substring(0, startIdx) + 
+                '<ul>' + 
+                segment.substring(startIdx, endIdx) + 
+                '</ul>' + 
+                segment.substring(endIdx);
+            } else {
+              processedMarkdown += segment;
+            }
+          } else {
+            processedMarkdown += segment;
+          }
+        }
+      }
+      
+      // 处理表格
+      const tableRegex = /^\|(.+)\|$/gm;
+      if (tableRegex.test(processedMarkdown)) {
+        // 找到所有表格行
+        const tableRows = processedMarkdown.match(/^\|(.+)\|$/gm);
+        if (tableRows && tableRows.length > 1) {
+          let tableHtml = '<table class="markdown-table">';
+          
+          // 处理表头
+          const headerRow = tableRows[0];
+          const headerCells = headerRow.split('|').filter(cell => cell.trim() !== '');
+          tableHtml += '<thead><tr>';
+          for (const cell of headerCells) {
+            tableHtml += `<th>${cell.trim()}</th>`;
+          }
+          tableHtml += '</tr></thead>';
+          
+          // 跳过分隔行
+          const dataRows = tableRows.slice(2);
+          if (dataRows.length > 0) {
+            tableHtml += '<tbody>';
+            for (const row of dataRows) {
+              const cells = row.split('|').filter(cell => cell.trim() !== '');
+              tableHtml += '<tr>';
+              for (const cell of cells) {
+                tableHtml += `<td>${cell.trim()}</td>`;
+              }
+              tableHtml += '</tr>';
+            }
+            tableHtml += '</tbody>';
+          }
+          
+          tableHtml += '</table>';
+          
+          // 替换原始表格文本
+          for (const row of tableRows) {
+            processedMarkdown = processedMarkdown.replace(row, '');
+          }
+          
+          // 插入HTML表格
+          processedMarkdown = tableHtml + processedMarkdown;
         }
       }
       
@@ -352,6 +424,9 @@ export default {
       
       // 处理斜体
       processedMarkdown = processedMarkdown.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      
+      // 处理链接
+      processedMarkdown = processedMarkdown.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
       
       // 处理段落和换行
       processedMarkdown = processedMarkdown
@@ -363,7 +438,8 @@ export default {
           !processedMarkdown.startsWith('<h2>') && 
           !processedMarkdown.startsWith('<h3>') && 
           !processedMarkdown.startsWith('<p>') &&
-          !processedMarkdown.startsWith('<ul>')) {
+          !processedMarkdown.startsWith('<ul>') &&
+          !processedMarkdown.startsWith('<table>')) {
         processedMarkdown = '<p>' + processedMarkdown;
       }
       
@@ -371,7 +447,8 @@ export default {
           !processedMarkdown.endsWith('</h1>') && 
           !processedMarkdown.endsWith('</h2>') && 
           !processedMarkdown.endsWith('</h3>') && 
-          !processedMarkdown.endsWith('</ul>')) {
+          !processedMarkdown.endsWith('</ul>') &&
+          !processedMarkdown.endsWith('</table>')) {
         processedMarkdown += '</p>';
       }
       
@@ -552,88 +629,71 @@ export default {
     async streamData(prompt) {
       try {
         this.streamingResult = '';
-        
-        // 创建一个新的AbortController，以便能够取消请求
         this.abortController = new AbortController();
         const signal = this.abortController.signal;
-
-        // 立即更新UI状态，使得用户知道分析已经开始
         this.$nextTick(() => {
-          // 强制滚动到底部，确保用户能看到分析结果开始显示
           const resultContent = document.querySelector('.result-content');
           if (resultContent) {
             resultContent.scrollTop = resultContent.scrollHeight;
           }
         });
-        
-        // 非常简单的处理函数，直接将接收到的文本添加到结果中
+        // 只拼接content内容，过滤无用信息
         const handleStreamContent = (text) => {
           try {
-            // 如果收到的是JSON字符串，尝试解析并提取内容
+            if (!text || !text.trim()) return;
+            
+            // 跳过纯ID（如 -chatcmpl-xxxx）
+            if (/^-?chatcmpl-[a-zA-Z0-9]+$/.test(text.trim())) return;
+            
+            // 跳过其他形式的ID/哈希值
+            if (/^\s*\b[a-f0-9]{24,40}\b\s*$/.test(text.trim())) return;
+            if (/^\s*\b[a-f0-9]{8}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{12}\b\s*$/.test(text.trim())) return;
+            
+            // 跳过完整JSON但没有content字段
             if (text.startsWith('{') && text.endsWith('}')) {
               try {
                 const json = JSON.parse(text);
-                // 优先检查delta.content (流式增量内容)
-                if (json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content) {
+                if (json.choices && json.choices[0] && json.choices[0].delta && typeof json.choices[0].delta.content === 'string') {
                   text = json.choices[0].delta.content;
-                } 
-                // 其次检查message.content (完整消息内容)
-                else if (json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) {
+                } else if (json.choices && json.choices[0] && json.choices[0].message && typeof json.choices[0].message.content === 'string') {
                   text = json.choices[0].message.content;
-                }
-                // 再次检查直接的content字段
-                else if (json.content) {
+                } else if (typeof json.content === 'string') {
                   text = json.content;
+                } else {
+                  return;
                 }
               } catch (e) {
-                // JSON解析失败，使用原始文本
-                console.log('JSON解析失败，使用原始文本', e);
+                return;
               }
             }
-
-            // 只有当文本不为空时才更新结果
             if (text && text.trim()) {
-              // 使用Vue的响应式更新
               this.$set(this, 'streamingResult', this.streamingResult + text);
-
-              // 分析中状态设为false，表示内容开始显示
               this.analyzing = false;
-              
-              // 更新UI并滚动到底部
-              this.$nextTick(() => {
+            this.$nextTick(() => {
                 const resultContent = document.querySelector('.result-content');
                 if (resultContent) {
                   resultContent.scrollTop = resultContent.scrollHeight;
                 }
-              });
+            });
             }
           } catch (e) {
             console.error('处理流数据出错:', e);
           }
         };
-        
         console.log("开始流式请求...");
-        
-        // 使用更新后的API，启用流式传输
         const response = await testLLMModel(this.form.selectedModel, prompt, {
           streaming: true,
           onProgress: handleStreamContent,
           signal: signal
         });
-        
         console.log("流式请求完成");
-        
-        // 确保结果保存
         if (this.streamingResult) {
-          this.result = this.streamingResult;
-          
-          // 初始化聊天历史
-          this.chatHistory = [
-            { role: 'user', content: prompt },
+            this.result = this.streamingResult;
+            this.chatHistory = [
+              { role: 'user', content: prompt },
             { role: 'assistant', content: this.streamingResult }
-          ];
-        }
-        
+            ];
+          }
         return this.streamingResult;
       } catch (error) {
         if (axios.isCancel(error)) {
@@ -643,7 +703,6 @@ export default {
           this.$message.error("分析失败: " + (error.message || "未知错误"));
         }
       } finally {
-        // 无论成功还是失败，都将analyzing状态设为false
         this.analyzing = false;
         this.abortController = null;
       }
@@ -661,6 +720,14 @@ export default {
     formatChatMessage(message) {
       try {
         if (!message) return '';
+        
+        // 首先过滤掉各种ID
+        message = message.replace(/chatcmpl-[a-zA-Z0-9]+/g, '')
+                         .replace(/\b[a-f0-9]{32}\b/g, '')  // 移除32位十六进制ID
+                         .replace(/\b[a-f0-9]{24}\b/g, '')  // 移除24位十六进制ID
+                         .replace(/\b[a-f0-9]{8}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{4}[a-f0-9]{12}\b/g, '') // 移除UUID格式
+                         .replace(/\b[0-9a-f]{8,40}\b/g, '') // 移除其他可能的哈希/ID格式
+                         .replace(/^-+$/gm, ''); // 移除纯短横线行
         
         // 尝试使用marked处理markdown
         let markedContent = '';
@@ -744,11 +811,21 @@ export default {
           
           // 处理不同格式的响应块
           if (typeof chunk === 'string') {
+            // 跳过纯ID（如 chatcmpl-xxxx）
+            if (/^-?chatcmpl-[a-zA-Z0-9]+$/.test(chunk.trim())) {
+              return;
+            }
+            
             // 尝试处理可能的SSE格式 (data: {...})
             const lines = chunk.split('\n').filter(line => line.trim() !== '');
             
             for (const line of lines) {
               try {
+                // 跳过纯ID行
+                if (/^-?chatcmpl-[a-zA-Z0-9]+$/.test(line.trim())) {
+                  continue;
+                }
+                
                 if (line.startsWith('data: ')) {
                   const jsonStr = line.substring(6).trim();
                   if (jsonStr === '[DONE]') continue;
@@ -768,7 +845,10 @@ export default {
                 }
               } catch (e) {
                 // 如果不是JSON，视为纯文本增量
-                content += line;
+                // 过滤掉chatcmpl-ID
+                if (!/^-?chatcmpl-[a-zA-Z0-9]+$/.test(line.trim())) {
+                  content += line;
+                }
               }
             }
           } else if (typeof chunk === 'object') {
@@ -889,7 +969,8 @@ export default {
         let analysisData = {
           podDetails: this.podDetails,
           events: [],
-          logs: ""
+          logs: "",
+          previousLogs: ""
         };
         
         console.log("分析范围:", this.form.analysisTypes);
@@ -908,6 +989,13 @@ export default {
           promises.push(this.fetchPodLogs().then(logs => {
             analysisData.logs = logs;
             console.log("已获取Pod日志长度:", logs ? logs.length : 0);
+          }));
+        }
+
+        if (this.form.analysisTypes.includes("previousLogs")) {
+          promises.push(this.fetchPreviousLogs().then(logs => {
+            analysisData.previousLogs = logs;
+            console.log("已获取Pod上次失败日志长度:", logs ? logs.length : 0);
           }));
         }
         
@@ -965,6 +1053,43 @@ export default {
         this.analyzing = false;
       }
     },
+    
+    // 获取Pod上一次失败的日志
+    async fetchPreviousLogs() {
+      try {
+        if (!this.podDetails || !this.podDetails.spec || !this.podDetails.spec.containers) {
+          console.warn("Pod详情不完整，无法获取上一次失败日志");
+          return "";
+        }
+        
+        const params = {
+          tailLines: parseInt(this.form.logLines) || 100,
+          timestamps: true,
+          previous: true // 获取上一次容器的日志
+        };
+        
+        // 如果Pod有多个容器，获取第一个容器的日志
+        if (this.podDetails.spec.containers.length > 0) {
+          params.container = this.podDetails.spec.containers[0].name;
+        }
+        
+        console.log("获取Pod上一次失败日志，参数:", params);
+        const response = await getPodLogsByName(this.clusterName, this.namespace, this.podName, params);
+        console.log("Pod上一次失败日志响应:", response);
+        if (response && typeof response === 'object' && response.data) {
+          return response.data;
+        } else if (typeof response === 'string') {
+          return response;
+        } else {
+          console.warn("获取到的上一次失败日志格式不正确:", response);
+          return "";
+        }
+      } catch (error) {
+        console.error("获取Pod上一次失败日志失败:", error);
+        return "获取上一次失败日志时出错: " + (error.message || "未知错误");
+      }
+    },
+    
     buildPrompt(data) {
       let prompt = `作为Kubernetes专家，请分析以下Pod的信息，找出可能的问题并提供解决方案。
 
@@ -1022,6 +1147,11 @@ Pod名称: ${this.podName}
         prompt += `\n## Pod日志 (最近${this.form.logLines}行)\n\`\`\`\n${data.logs}\n\`\`\`\n`;
       }
 
+      // 添加上一次失败的日志信息
+      if (data.previousLogs && this.form.analysisTypes.includes("previousLogs")) {
+        prompt += `\n## Pod上一次失败的日志 (最近${this.form.logLines}行)\n\`\`\`\n${data.previousLogs}\n\`\`\`\n`;
+      }
+
       // 添加YAML信息
       if (data.podDetails && this.form.analysisTypes.includes("yaml")) {
         prompt += `\n## Pod YAML\n\`\`\`yaml\n`;
@@ -1044,6 +1174,75 @@ Pod名称: ${this.podName}
 请以Markdown格式输出，使用标题、列表和代码块使结果更易读。`;
 
       return prompt;
+    },
+    // 滚动到弹窗顶部
+    scrollToTop() {
+      // 滚动到分析弹窗最顶部
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+      
+      // 滚动结果区域到顶部
+      const resultContent = document.querySelector('.result-content');
+      if (resultContent) {
+        resultContent.scrollTop = 0;
+      }
+    },
+    // 滚动到聊天输入框顶部
+    scrollToDialogTop() {
+      // 尝试多种可能的父元素选择器
+      const possibleSelectors = [
+        '.el-dialog__body',
+        '.el-dialog__wrapper',
+        '.el-dialog',
+        '.app-container',
+        '.ai-analysis-dialog'
+      ];
+      
+      // 尝试找到可滚动的父元素
+      let scrollableParent = null;
+      
+      // 首先尝试获取当前组件的父级元素
+      let currentElement = this.$el;
+      while (currentElement && !scrollableParent) {
+        // 检查当前元素是否可滚动
+        if (currentElement.scrollHeight > currentElement.clientHeight) {
+          scrollableParent = currentElement;
+          console.log('找到可滚动的父元素:', currentElement);
+          break;
+        }
+        
+        // 向上查找父元素
+        currentElement = currentElement.parentElement;
+        
+        // 避免无限循环
+        if (currentElement === document.body) break;
+      }
+      
+      // 如果通过DOM遍历没找到，尝试通过选择器查找
+      if (!scrollableParent) {
+        for (const selector of possibleSelectors) {
+          const element = document.querySelector(selector);
+          if (element && element.scrollHeight > element.clientHeight) {
+            scrollableParent = element;
+            console.log(`找到可滚动容器: ${selector}`);
+            break;
+          }
+        }
+      }
+      
+      if (scrollableParent) {
+        // 滚动到顶部
+        scrollableParent.scrollTop = 0;
+        console.log('执行滚动到顶部操作');
+      }
+      
+      // 无论是否找到可滚动元素，都尝试滚动页面到顶部
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
     }
   }
 }
@@ -1074,6 +1273,32 @@ Pod名称: ${this.podName}
 }
 .button-container {
   margin: 20px 0;
+}
+
+/* 顶部操作区域的样式 */
+.top-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scroll-top-btn {
+  color: #409EFF;
+  padding: 5px;
+}
+
+.scroll-top-btn:hover {
+  color: #66b1ff;
+}
+
+.to-top-btn {
+  color: #409EFF;
+  margin-left: 5px;
+  padding: 5px;
+}
+
+.to-top-btn:hover {
+  color: #66b1ff;
 }
 
 /* Markdown样式 - 深色主题 */
@@ -1143,6 +1368,33 @@ Pod名称: ${this.podName}
 }
 
 .dark-theme >>> tr:nth-child(even) {
+  background-color: #2a2a2a;
+}
+
+/* Markdown表格样式 */
+.dark-theme >>> .markdown-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+  background-color: #1e1e1e;
+}
+
+.dark-theme >>> .markdown-table th {
+  background-color: #2d2d2d;
+  color: #ffffff;
+  font-weight: bold;
+  padding: 8px;
+  border: 1px solid #444444;
+  text-align: left;
+}
+
+.dark-theme >>> .markdown-table td {
+  padding: 8px;
+  border: 1px solid #444444;
+  color: #e6e6e6;
+}
+
+.dark-theme >>> .markdown-table tr:nth-child(even) {
   background-color: #2a2a2a;
 }
 

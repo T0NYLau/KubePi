@@ -110,13 +110,28 @@ func (e *KubePiServer) setUpLogger() {
 }
 
 func (e *KubePiServer) setUpDB() {
-	realDir := file.ReplaceHomeDir(e.config.Spec.DB.Path)
-	if !fileutil.Exist(realDir) {
-		if err := os.MkdirAll(realDir, 0755); err != nil {
-			panic(fmt.Errorf("can not create database dir: %s message: %s", e.config.Spec.DB.Path, err))
+	dbPath := file.ReplaceHomeDir(e.config.Spec.DB.Path)
+	var dbFilePath string
+	
+	// 检查路径是否已经是一个文件路径（以.db结尾）
+	if strings.HasSuffix(dbPath, ".db") {
+		// 如果是文件路径，就获取其目录部分
+		dbFilePath = dbPath
+		dbPath = path.Dir(dbPath)
+	} else {
+		// 如果是目录路径，就将文件名附加到路径
+		dbFilePath = path.Join(dbPath, "kubepi.db")
+	}
+	
+	// 确保目录存在
+	if !fileutil.Exist(dbPath) {
+		if err := os.MkdirAll(dbPath, 0755); err != nil {
+			panic(fmt.Errorf("can not create database dir: %s message: %s", dbPath, err))
 		}
 	}
-	d, err := storm.Open(path.Join(realDir, "kubepi.db"))
+	
+	// 打开数据库
+	d, err := storm.Open(dbFilePath)
 	if err != nil {
 		panic(err)
 	}

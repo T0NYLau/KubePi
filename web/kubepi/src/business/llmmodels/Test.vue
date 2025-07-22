@@ -463,7 +463,8 @@ export default {
 }
 .response-content {
   margin-top: 15px;
-  background-color: #f8f8f8;
+  background-color: #1e1e1e;
+  color: #ffffff;
   padding: 15px;
   border-radius: 4px;
 }
@@ -473,16 +474,18 @@ export default {
 .response-role {
   font-weight: bold;
   margin-bottom: 5px;
+  color: #61afef;
 }
 .response-text {
   white-space: pre-wrap;
   font-family: monospace;
+  color: #e6e6e6;
 }
 .response-usage {
   margin-top: 15px;
-  color: #666;
+  color: #8a8a8a;
   font-size: 12px;
-  border-top: 1px dashed #ddd;
+  border-top: 1px dashed #444;
   padding-top: 10px;
 }
 </style> 

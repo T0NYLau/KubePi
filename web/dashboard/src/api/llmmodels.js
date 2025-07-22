@@ -32,15 +32,15 @@ export function testLLMModel(name, content, options = {}) {
         return new Promise((resolve, reject) => {
             // 创建请求配置
             const fetchOptions = {
-                method: 'POST',
+            method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'text/event-stream'
                 },
                 body: JSON.stringify({ content, stream: true }),
                 credentials: 'include'
-            };
-
+        };
+        
             // 如果提供了AbortController，添加到请求选项
             if (options.signal) {
                 fetchOptions.signal = options.signal;
@@ -64,7 +64,7 @@ export function testLLMModel(name, content, options = {}) {
                             while (true) {
                                 // 读取数据块
                                 const { value, done } = await reader.read();
-                                
+                    
                                 // 如果流结束，退出循环
                                 if (done) {
                                     console.log('流结束');
@@ -93,8 +93,8 @@ export function testLLMModel(name, content, options = {}) {
                                         if (eventData === '[DONE]') {
                                             console.log('收到[DONE]标记');
                                             continue;
-                                        }
-                                        
+        }
+
                                         // 将数据传递给回调函数
                                         if (options.onProgress) {
                                             try {
@@ -105,8 +105,8 @@ export function testLLMModel(name, content, options = {}) {
                                         }
                                     }
                                 }
-                            }
-                            
+    }
+    
                             // 处理缓冲区中剩余的数据
                             if (buffer.trim() !== '' && options.onProgress) {
                                 options.onProgress(buffer);
@@ -122,13 +122,13 @@ export function testLLMModel(name, content, options = {}) {
                     
                     // 开始读取流
                     readStream();
-                })
-                .catch(error => {
-                    console.error('LLM测试请求失败:', error);
+            })
+            .catch(error => {
+                console.error('LLM测试请求失败:', error);
                     $error(error.message || '请求失败');
-                    reject(error);
-                });
-        });
+                reject(error);
+            });
+    });
     }
     
     // 非流式模式 - 使用常规请求
