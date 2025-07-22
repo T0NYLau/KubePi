@@ -53,10 +53,13 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 ## 使用方法
 先到首页的“LLM模型列表”中配置和测试需要对接的AI模型
+
 配置AI模型时，请在BaseURI字段中输入完整的API端点URL，例如：
+
 ```
 http://xxxxxx/v1/chat/completions
 ```
+
 测试可用后，可到pod的下拉栏中，找到有故障的pod，用下拉栏中的AI分析功能进行故障分析。
 
 ## 注意事项
