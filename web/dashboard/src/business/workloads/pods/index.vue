@@ -38,7 +38,22 @@
       <el-table-column type="selection" fix ></el-table-column>
       <el-table-column :label="$t('commons.table.name')" prop="name" min-width="80" show-overflow-tooltip fix sortable="name">
         <template v-slot:default="{row}">
-          <span class="span-link" @click="openDetail(row)">{{ row.metadata.name }}</span>
+          <span class="span-link" @click="openDetail(row)">
+            {{ row.metadata.name }}
+            <el-tooltip v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`] && podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 0" 
+                        effect="dark" 
+                        placement="top">
+              <div slot="content">
+                <div v-for="(event, index) in podEvents[`${row.metadata.namespace}-${row.metadata.name}`].slice(0, 3)" :key="index">
+                  <strong>{{ event.reason }}:</strong> {{ event.message }}
+                </div>
+                <div v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 3">
+                  ... 还有 {{ podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length - 3 }} 个警告
+                </div>
+              </div>
+              <i class="el-icon-warning" style="color: #E6A23C; margin-left: 5px;"></i>
+            </el-tooltip>
+          </span>
         </template>
       </el-table-column>
       <el-table-column :label="$t('business.namespace.namespace')" min-width="45" prop="namespace" sortable="namespace"/>
@@ -246,6 +261,7 @@ import writeXlsxFile from "write-excel-file";
 import { cpuUnitConvert, memoryUnitConvert } from "@/utils/unitConvert"
 import { listPodMetrics } from "@/api/apis"
 import { searchFullTextItems } from "@/api/fulltextsearch/fulltextsearch"
+import { listEventsWithPodSelector } from "@/api/events"
 import PodEdit from "./edit"
 import PodFileBrowser from "./podfilebrowser"
 import PodTop from "./top"
@@ -293,6 +309,7 @@ export default {
       terminalDialogParams: {},
       logDialogParams: {},
       aiAnalysisDialogVisible: false,
+      podEvents: {}, // 存储Pod事件信息
     }
   },
   methods: {
@@ -538,9 +555,11 @@ export default {
       }
       if( (!this.orderField || !this.orderMethod ) && !this.isFullTextSearch){
         listWorkLoads(this.clusterName, "pods", true, this.searchConfig.keywords, this.paginationConfig.currentPage, this.paginationConfig.pageSize)
-        .then((res) => {
+        .then(async (res) => {
           this.data =this.doWithPodList( res.items )
           this.paginationConfig.total = res.total
+          // 获取Pod警告事件
+          await this.getAllPodsWarningEvents()
         }).finally(() => {
           this.loading = false
         })
@@ -549,7 +568,7 @@ export default {
         let pageSize=this.paginationConfig.pageSize
 
         listWorkLoads(this.clusterName, "pods", false, "")
-        .then((res) => {
+        .then(async (res) => {
           let results=[]
           if(!this.isFullTextSearch){
                results = this.doWithPodList( res.items  );
@@ -558,6 +577,8 @@ export default {
           } 
           this.data =results.slice(currentPage*pageSize-pageSize,currentPage*pageSize)
           this.paginationConfig.total = results.length
+          // 获取Pod警告事件
+          await this.getAllPodsWarningEvents()
         }).finally(() => {
           this.loading = false
         })
@@ -735,9 +756,37 @@ export default {
       }
       this.aiAnalysisDialogVisible = true
     },
+    // 获取Pod的警告事件
+    async getPodWarningEvents(pod) {
+      try {
+        const fieldSelector = `involvedObject.name=${pod.metadata.name},involvedObject.namespace=${pod.metadata.namespace},involvedObject.kind=Pod,type=Warning`
+        const events = await listEventsWithPodSelector(this.clusterName, pod.metadata.namespace, fieldSelector)
+        return events.items || []
+      } catch (error) {
+        console.error('获取Pod事件失败:', error)
+        return []
+      }
+    },
+    // 批量获取所有Pod的警告事件
+    async getAllPodsWarningEvents() {
+      const podEvents = {}
+      for (const pod of this.data) {
+        const warningEvents = await this.getPodWarningEvents(pod)
+        if (warningEvents.length > 0) {
+          podEvents[`${pod.metadata.namespace}-${pod.metadata.name}`] = warningEvents
+        }
+      }
+      this.podEvents = podEvents
+    },
   },
   mounted () {
-    this.clusterName = this.$route.query.cluster
+    // 确保clusterName是字符串类型，处理cluster参数可能是对象的情况
+    const clusterParam = this.$route.query.cluster
+    if (typeof clusterParam === 'object' && clusterParam !== null) {
+      this.clusterName = clusterParam.name || clusterParam.clusterName || ''
+    } else {
+      this.clusterName = clusterParam || ''
+    }
     this.search()
   },
 }
