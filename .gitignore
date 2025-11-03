@@ -46,4 +46,8 @@ cmd/server/web
 # Go test binaries
 *.test
 
-*node_modules*
+# Node modules
+node_modules/
+web/dashboard/node_modules/
+web/kubepi/node_modules/
+web/terminal/node_modules/
