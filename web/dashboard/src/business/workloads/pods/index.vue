@@ -43,7 +43,7 @@
           </span>
         </template>
       </el-table-column>
-      <el-table-column :label="$t('business.event.event')" min-width="30" prop="events">
+      <el-table-column :label="$t('business.event.event')" min-width="30" prop="event_count" sortable="event_count">
         <template v-slot:default="{row}">
           <el-button 
             v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`] && podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 0"
@@ -566,6 +566,9 @@ export default {
             item.nodeName=item.spec.nodeName
             item.creationTimestamp=item.metadata.creationTimestamp
             item.restart_count=Number(this.getRestartTimes(item))
+            // 添加事件数量字段用于排序
+            const eventKey = `${item.metadata.namespace}-${item.metadata.name}`
+            item.event_count = this.podEvents[eventKey] ? this.podEvents[eventKey].length : 0
             result.push(item)
           }
           if(!this.orderField || !this.orderMethod){
@@ -832,6 +835,10 @@ export default {
         }
       }
       this.podEvents = podEvents
+      // 事件数据加载完成后，重新处理pod列表以更新事件数量字段
+      if (this.data && this.data.length > 0) {
+        this.data = this.doWithPodList([...this.data])
+      }
     },
   },
   mounted () {
