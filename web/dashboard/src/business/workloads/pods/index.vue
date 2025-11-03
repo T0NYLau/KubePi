@@ -40,20 +40,19 @@
         <template v-slot:default="{row}">
           <span class="span-link" @click="openDetail(row)">
             {{ row.metadata.name }}
-            <el-tooltip v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`] && podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 0" 
-                        effect="dark" 
-                        placement="top">
-              <div slot="content">
-                <div v-for="(event, index) in podEvents[`${row.metadata.namespace}-${row.metadata.name}`].slice(0, 3)" :key="index">
-                  <strong>{{ event.reason }}:</strong> {{ event.message }}
-                </div>
-                <div v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 3">
-                  ... 还有 {{ podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length - 3 }} 个警告
-                </div>
-              </div>
-              <i class="el-icon-warning" style="color: #E6A23C; margin-left: 5px;"></i>
-            </el-tooltip>
           </span>
+        </template>
+      </el-table-column>
+      <el-table-column :label="$t('business.event.event')" min-width="30" prop="events">
+        <template v-slot:default="{row}">
+          <el-button 
+            v-if="podEvents[`${row.metadata.namespace}-${row.metadata.name}`] && podEvents[`${row.metadata.namespace}-${row.metadata.name}`].length > 0"
+            type="text" 
+            @click="showPodEvents(row)"
+            style="padding: 0; font-size: 16px;">
+            <i class="el-icon-warning" style="color: #E6A23C;"></i>
+          </el-button>
+          <span v-else>-</span>
         </template>
       </el-table-column>
       <el-table-column :label="$t('business.namespace.namespace')" min-width="45" prop="namespace" sortable="namespace"/>
@@ -247,6 +246,41 @@
         @close="aiAnalysisDialogVisible = false"
       />
     </el-dialog>
+
+    <el-dialog
+      :title="$t('business.event.event')"
+      :visible.sync="eventsDialogVisible"
+      width="70%"
+      :destroy-on-close="true"
+      :close-on-click-modal="false">
+      <div v-if="selectedPodEvents && selectedPodEvents.length > 0">
+        <el-table :data="selectedPodEvents" style="width: 100%" max-height="500">
+          <el-table-column prop="type" :label="$t('business.event.type')" width="80">
+            <template v-slot:default="{row}">
+              <el-tag :type="row.type === 'Warning' ? 'warning' : 'info'" size="mini">
+                {{ row.type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" :label="$t('business.event.reason')" width="120" />
+          <el-table-column prop="message" :label="$t('business.event.message')" show-overflow-tooltip />
+          <el-table-column prop="firstTimestamp" :label="$t('commons.table.created_time')" width="150">
+            <template v-slot:default="{row}">
+              {{ row.firstTimestamp | age }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="lastTimestamp" :label="$t('business.event.time')" width="150">
+            <template v-slot:default="{row}">
+              {{ row.lastTimestamp | age }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="count" :label="$t('business.event.restart')" width="70" />
+        </el-table>
+      </div>
+      <div v-else style="text-align: center; padding: 20px; color: #909399;">
+        {{ $t('commons.table.empty_text') }}
+      </div>
+    </el-dialog>
   </layout-content>
   </div>
 </template>
@@ -309,6 +343,8 @@ export default {
       terminalDialogParams: {},
       logDialogParams: {},
       aiAnalysisDialogVisible: false,
+      eventsDialogVisible: false,
+      selectedPodEvents: [],
       podEvents: {}, // 存储Pod事件信息
     }
   },
@@ -756,6 +792,25 @@ export default {
       }
       this.aiAnalysisDialogVisible = true
     },
+    // 显示Pod事件详情
+    async showPodEvents(row) {
+      this.selectedPod = {
+        name: row.metadata.name,
+        namespace: row.metadata.namespace
+      }
+      try {
+        // 获取该Pod的所有事件（不仅仅是警告）
+        const fieldSelector = `involvedObject.name=${row.metadata.name},involvedObject.namespace=${row.metadata.namespace},involvedObject.kind=Pod`
+        const events = await listEventsWithPodSelector(this.clusterName, row.metadata.namespace, fieldSelector)
+        this.selectedPodEvents = events.items || []
+        this.eventsDialogVisible = true
+      } catch (error) {
+        console.error('获取Pod事件失败:', error)
+        this.$message.error('Failed to fetch pod events')
+        this.selectedPodEvents = []
+        this.eventsDialogVisible = true
+      }
+    },
     // 获取Pod的警告事件
     async getPodWarningEvents(pod) {
       try {
@@ -763,7 +818,7 @@ export default {
         const events = await listEventsWithPodSelector(this.clusterName, pod.metadata.namespace, fieldSelector)
         return events.items || []
       } catch (error) {
-        console.error('获取Pod事件失败:', error)
+        console.error('获取Pod警告事件失败:', error)
         return []
       }
     },

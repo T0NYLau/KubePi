@@ -45,3 +45,5 @@ cmd/server/web
 
 # Go test binaries
 *.test
+
+*node_modules*
