@@ -201,13 +201,35 @@ func (h *Handler) Search() iris.Handler {
 
 		// 根据条件过滤模型
 		var filteredModels []v1Llm.LLMModel
-		if len(searchConditions.Conditions) == 0 {
+		
+		// 检查条件是否为空
+		var conditions []common.Condition
+		var hasConditions bool
+		
+		// 根据条件类型进行处理
+		switch cond := searchConditions.Conditions.(type) {
+		case []common.Condition:
+			// 处理数组格式的条件
+			conditions = cond
+			hasConditions = len(cond) > 0
+		case map[string]common.Condition:
+			// 处理对象格式的条件，转换为数组
+			for _, condition := range cond {
+				conditions = append(conditions, condition)
+			}
+			hasConditions = len(cond) > 0
+		default:
+			// 其他类型或空值
+			hasConditions = false
+		}
+		
+		if !hasConditions {
 			// 无条件时返回全部结果
 			filteredModels = allModels
 		} else {
 			for _, model := range allModels {
 				match := true
-				for _, condition := range searchConditions.Conditions {
+				for _, condition := range conditions {
 					switch condition.Field {
 					case "name":
 						if condition.Operator == "like" {
